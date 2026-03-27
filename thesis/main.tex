@@ -1,0 +1,48 @@
+\documentclass[12pt,a4paper,oneside,openany,oneauthor,masterthesis,deansoffice]{mfipl}
+
+\usepackage{float}
+\usepackage{graphicx} % Required for inserting images
+\usepackage{clrscode}
+\usepackage{latexsym}
+
+
+
+\author{Maciej Wiśniewski}
+\authorno{275016}
+\fieldofstudy{Informatyka}
+\thesistopic{Analiza algorytmów najkrótszych ścieżek w problemie miasta 15-minutowego}
+\supervisor{dr inż. Magda Detlaff}
+\date{2026}
+\place{Gdańsk}
+
+\acknowledgementscontent{}
+
+\begin{document}
+    \include{streszczenie}
+	\frontpage
+	\abstractandkeywords
+	\tableofcontents
+	\thispagestyle{empty}
+	\clearpage
+	\setcounter{page}{1}
+	
+	\include{streszczenie.tex}
+	\include{0_wprowadzenie.tex}
+        \include{1_rozdzial.tex}
+        \include{2_rozdzial.tex}
+        \include{3_rozdzial.tex}
+        \include{4_rozdzial}
+        \include{5_rozdzial}
+	\include{6_podsumowanie.tex}
+	
+        \printbibliography
+        \clearpage
+	%\renewcommand{\listalgorithmcfname}{Spis algorytmów}
+	%\listofalgorithms
+	\thispagestyle{empty}	
+	\listoffigures
+        \listoftables
+        \clearpage
+\mycomment{        \originalitystatement
+	\sharingpermission}
+\end{document}

@@ -1,0 +1,299 @@
+\mychapter{Dane i model obliczeniowy}
+\label{chap:dane_i_model}
+
+\section{Źródło danych: OpenStreetMap}
+\label{sec:dane:osm}
+
+Zarówno sieć transportowa, jak i lokalizacje usług (punkty zainteresowania, ang.\ \emph{Points of Interest}, PoI)
+wykorzystywane w~niniejszej pracy pochodzą z~projektu OpenStreetMap (OSM) \cite{openstreetmap}.
+OSM jest otwartą, ogólnoświatową bazą danych geoprzestrzennych, tworzoną i utrzymywaną przez społeczność wolontariuszy.
+Wybór tego źródła podyktowany jest trzema czynnikami:
+\begin{itemize}
+  \item \textbf{Otwartość danych} --- dane OSM są dostępne na licencji ODbL,
+        co umożliwia ich swobodne wykorzystanie w~badaniach naukowych bez ograniczeń licencyjnych.
+  \item \textbf{Globalna replikowalność} --- jednolity format danych i schemat tagów pozwalają
+        na stosowanie tych samych narzędzi i metod niezależnie od analizowanego miasta,
+        co jest istotne z~perspektywy powtarzalności eksperymentów.
+  \item \textbf{Jednolity schemat tagów} --- OSM definiuje ustandaryzowany system tagów (par klucz--wartość),
+        który umożliwia systematyczne mapowanie kategorii usług na odpowiednie obiekty w~bazie danych.
+\end{itemize}
+Uzasadnienie to jest spójne z~podejściem przyjętym m.in.\ w~pracy Olivariego i~in.\ \cite{olivari2023presenting}
+(indeks NEXI) oraz w~pracy Lama \cite{Lam2024}, w~których OSM stanowił jedyne źródło danych wejściowych.
+
+Dostęp do danych OSM realizowany jest za pośrednictwem biblioteki OSMnx \cite{boeing2017osmnx},
+która udostępnia interfejs programistyczny w~języku Python do usługi Overpass API.
+OSMnx automatyzuje pobieranie, filtrowanie i~konstrukcję grafów transportowych w~postaci obiektów
+biblioteki NetworkX, co pozwala na bezpośrednie wykorzystanie standardowych algorytmów grafowych.
+
+\section{Konstrukcja grafu pieszego}
+\label{sec:dane:graf}
+
+Na podstawie danych OSM budowany jest graf ważony $G=(V,E)$ reprezentujący sieć pieszą badanego obszaru.
+Proces konstrukcji obejmuje cztery kroki, podsumowane poniżej.
+
+\subsection{Pobranie danych}
+
+Dane sieci pieszej pobierane są za pomocą funkcji \texttt{osmnx.graph\_from\_polygon}
+(dla obszarów definiowanych wielokątem, np.\ Gdańsk Południe)
+lub \texttt{osmnx.graph\_from\_place} (dla obszarów identyfikowanych przez nazwę, np.\ Gdańsk, Londyn).
+W~obu przypadkach stosowany jest parametr \texttt{network\_type="walk"},
+który ogranicza wynik do ulic i ciągów dozwolonych dla ruchu pieszego.
+
+\subsection{Odwzorowanie kartograficzne}
+
+Pobrany graf jest rzutowany do układu współrzędnych EPSG:3035
+--- metrycznego odwzorowania równopolowego obejmującego Europę ---
+za pomocą funkcji \texttt{osmnx.projection.project\_graph}.
+Dzięki temu wszystkie odległości i~długości krawędzi są wyrażone w~metrach,
+co jest konieczne do poprawnego wyznaczania wag czasowych.
+
+\subsection{Konsolidacja skrzyżowań}
+
+Surowe dane OSM często zawierają nadmiarowe węzły w~obrębie skrzyżowań
+(np.\ osobne węzły dla każdego pasa ruchu lub przejścia).
+Konsolidacja skrzyżowań, realizowana funkcją \texttt{osmnx.consolidate\_intersections}
+z~parametrem \texttt{tolerance=10\,m}, łączy węzły leżące bliżej siebie niż zadana tolerancja
+w~pojedyncze wierzchołki.
+Przyjęta wartość tolerancji $10\,\text{m}$ stanowi kompromis między redukcją nadmiarowych węzłów
+a~zachowaniem szczegółów topologicznych sieci.
+
+\subsection{Konwersja do grafu nieskierowanego}
+
+Sieć piesza jest symetryczna --- piesi mogą poruszać się w~obu kierunkach każdym odcinkiem ---
+dlatego wynikowy graf jest konwertowany do postaci nieskierowanej
+za pomocą funkcji \texttt{osmnx.convert.to\_undirected}.
+
+\subsection{Geometria krawędzi}
+
+Krawędzie grafu mogą posiadać atrybut \texttt{geometry} przechowujący obiekt \texttt{LineString}
+--- łamaną złożoną z~wielu punktów pośrednich, odwzorowującą rzeczywisty przebieg odcinka ulicy.
+Długość takiej krawędzi jest sumą odległości między kolejnymi punktami łamanej.
+Krawędzie bez tego atrybutu są traktowane jako odcinki prostoliniowe łączące współrzędne wierzchołków końcowych,
+a~ich długość jest równa odległości euklidesowej między tymi wierzchołkami.
+
+\clearpage
+
+\section{Kategorie usług i mapowanie tagów OSM}
+\label{sec:dane:uslugi}
+
+W~niniejszej pracy wykorzystywany jest zestaw ośmiu kategorii usług zdefiniowanych
+w~indeksie NEXI (Olivari i~in.\ \cite{olivari2023presenting}, Table~1).
+Każda kategoria jest mapowana na odpowiedni zestaw tagów OSM,
+co umożliwia automatyczne pozyskiwanie lokalizacji usług z~bazy danych.
+Mapowanie przedstawiono w~tabeli~\ref{tab:nexi_tags}.
+
+\begin{table}[ht]
+\centering
+\caption{Kategorie usług NEXI i ich mapowanie na tagi OSM.}
+\label{tab:nexi_tags}
+\begin{tabular}{l l p{7.5cm}}
+\hline
+\textbf{Kategoria} & \textbf{Klucz OSM} & \textbf{Przykładowe wartości} \\
+\hline
+education      & \texttt{amenity}  & college, kindergarten, school, university, \ldots \\
+entertainment  & \texttt{amenity}  & cinema, theatre, community\_centre, arts\_centre, \ldots \\
+grocery        & \texttt{shop}     & bakery, supermarket, convenience, greengrocer, \ldots \\
+health         & \texttt{amenity}  & clinic, doctors, hospital, pharmacy, \ldots \\
+posts\_banks   & \texttt{amenity}  & atm, bank, post\_office, bureau\_de\_change \\
+parks          & \texttt{leisure}  & park, dog\_park \\
+sustenance     & \texttt{amenity}  & restaurant, cafe, bar, fast\_food, pub, \ldots \\
+shops          & \texttt{shop}     & clothes, electronics, furniture, hairdresser, \ldots \\
+\hline
+\end{tabular}
+\end{table}
+
+Przy mapowaniu tagów istotne są trzy decyzje projektowe:
+\begin{itemize}
+  \item \textbf{Kategorie \emph{grocery} i \emph{shops}} --- obie wykorzystują klucz \texttt{shop}.
+        Kategoria \emph{grocery} obejmuje sklepy spożywcze i napojowe
+        (np.\ bakery, supermarket, convenience),
+        natomiast \emph{shops} obejmuje handel nieżywnościowy
+        (np.\ clothes, electronics, furniture).
+        Cztery wartości ogólnohandlowe (\texttt{department\_store}, \texttt{general},
+        \texttt{kiosk}, \texttt{mall}) występują w~obu listach zgodnie z~oryginałem~\cite{olivari2023presenting}.
+
+  \item \textbf{Kategoria \emph{parks}} --- w~tabeli NEXI kategoria ta jest konceptualnie grupowana
+        pod kluczem \texttt{amenity}, jednak w~schemacie tagów OSM wartości \texttt{park} i~\texttt{dog\_park}
+        należą do klucza \texttt{leisure}.
+        Zapytanie \texttt{amenity=park} zwraca w~OSM niemal puste wyniki;
+        poprawnym zapytaniem jest \texttt{leisure=park}.
+
+  \item \textbf{Normalizacja geometrii} --- obiekty pobrane z~OSM mogą mieć zróżnicowaną geometrię:
+        punkty, linie lub wielokąty (np.\ obrys budynku szpitala).
+        Wszystkie geometrie są sprowadzane do centroidów obliczanych w~układzie EPSG:3035,
+        co zapewnia jednolity format punktowy wymagany przez procedurę wstawiania usług do grafu.
+\end{itemize}
+
+\clearpage
+
+\section{Wstawianie lokalizacji usług do grafu}
+\label{sec:dane:wstawianie}
+
+Aby umożliwić obliczanie odległości grafowych między wierzchołkami sieci pieszej
+a~lokalizacjami usług, punkty usług muszą zostać wstawione do grafu jako dodatkowe wierzchołki.
+Procedura wstawiania składa się z~następujących kroków, wykonywanych dla każdego punktu usługi:
+
+\begin{enumerate}
+  \item \textbf{Znalezienie najbliższej krawędzi} ---
+        dla punktu usługi o~współrzędnych $(x_s, y_s)$ wyznaczana jest najbliższa krawędź $(u,v)$ grafu
+        za pomocą funkcji \texttt{osmnx.nearest\_edges}.
+
+  \item \textbf{Punkt najbliższy na krawędzi} ---
+        za pomocą funkcji \texttt{shapely.nearest\_points}
+        wyznaczany jest punkt $p$ na geometrii krawędzi najbliższy do $(x_s, y_s)$.
+
+  \item \textbf{Podział krawędzi} ---
+        krawędź $(u,v)$ jest dzielona w~punkcie $p$ na dwie nowe krawędzie: $(u, p)$ i~$(p, v)$.
+        Geometrie nowych krawędzi są wyznaczane przez podział ciągu współrzędnych
+        oryginalnej krawędzi w~miejscu rzutu.
+
+  \item \textbf{Utworzenie wierzchołka usługi} ---
+        w~punkcie $p$ tworzony jest nowy wierzchołek grafu,
+        oznaczony kategorią usługi (np.\ \emph{grocery}, \emph{health}).
+
+  \item \textbf{Wyznaczenie wag} ---
+        nowym krawędziom przypisywane są wagi czasowe zgodnie z~modelem
+        opisanym w~podrozdziale~\ref{sec:dane:wagi}.
+\end{enumerate}
+
+Podejście to jest analogiczne do metody zastosowanej przez Lama
+(Figure~6.2 w~\cite{Lam2024}).
+
+\section{Model wag czasowych}
+\label{sec:dane:wagi}
+
+Waga krawędzi $e \in E$ jest interpretowana jako czas przejścia pieszo i~wyznaczana według wzoru
+\[
+w(e) = \frac{\ell(e)}{v},
+\]
+gdzie $\ell(e)$ jest długością geometrii krawędzi $e$ w~metrach,
+a~$v = 5\,\text{km/h}$ jest przyjętą prędkością marszu.
+Wartość prędkości jest zgodna z~założeniem przyjętym
+w~pracy definiującej indeks NEXI \cite{olivari2023presenting}.
+
+Model wag jest celowo prosty --- nie uwzględnia dodatkowych składników opóźnień
+(np.\ na skrzyżowaniach czy przejściach dla pieszych) ani zróżnicowania prędkości
+ze względu na typ nawierzchni lub nachylenie terenu.
+
+\section{Obszary badawcze i charakterystyka grafów}
+\label{sec:dane:obszary}
+
+Eksperymenty prowadzone są na trzech obszarach o~zróżnicowanej skali,
+co pozwala ocenić zachowanie badanych algorytmów w~warunkach
+od analizy lokalnej do testu na wielkiej skali.
+
+\subsection{Gdańsk Południe}
+
+Gdańsk Południe obejmuje cztery jednostki pomocnicze miasta Gdańska:
+Chełm, Jasień, Orunia Górna--Gdańsk Południe oraz Ujeścisko-Łostowice \cite{wiki:gdansk_poludnie}.
+Granice tych jednostek są pozyskiwane z~OpenStreetMap za pomocą geokodowania,
+a~następnie łączone w~jeden wielokąt operacją \texttt{unary\_union}.
+Jest to najmniejszy z~badanych obszarów, stanowiący przykład analizy na poziomie dzielnicy.
+
+\subsection{Gdańsk}
+
+Obszar obejmuje całe miasto Gdańsk w~granicach administracyjnych.
+Granica jest pozyskiwana z~OSM jako pojedynczy wielokąt odpowiadający relacji administracyjnej miasta.
+
+\subsection{Londyn (Greater London)}
+
+Greater London stanowi największy z~badanych obszarów i~pełni rolę testu skalowalności.
+Granica jest pozyskiwana z~OSM analogicznie jak w~przypadku Gdańska.
+
+\subsection{Wizualizacje grafów}
+
+Rysunki~\ref{fig:graf_gdansk_poludnie}--\ref{fig:graf_london} przedstawiają grafy piesze
+trzech badanych obszarów po wstawieniu lokalizacji usług.
+Szare punkty odpowiadają wierzchołkom sieci pieszej (skrzyżowaniom),
+a~czerwone --- wstawionym lokalizacjom usług.
+
+\begin{figure}[ht]
+\centering
+\includegraphics[width=0.75\textwidth]{gdansk_poludnie_walk_services.png}
+\caption{Graf pieszy Gdańska Południe z~lokalizacjami usług.}
+\label{fig:graf_gdansk_poludnie}
+\end{figure}
+
+\begin{figure}[ht]
+\centering
+\includegraphics[width=0.75\textwidth]{gdansk_walk_services.png}
+\caption{Graf pieszy Gdańska z~lokalizacjami usług.}
+\label{fig:graf_gdansk}
+\end{figure}
+
+\begin{figure}[ht]
+\centering
+\includegraphics[width=0.75\textwidth]{london_walk_services.png}
+\caption{Graf pieszy Londynu z~lokalizacjami usług.}
+\label{fig:graf_london}
+\end{figure}
+
+\clearpage
+
+\subsection{Charakterystyka grafów}
+
+Tabela~\ref{tab:grafy} przedstawia rozmiary grafów pieszych
+dla trzech badanych obszarów (po konsolidacji skrzyżowań, przed wstawieniem wierzchołków usług).
+Rozmiary różnią się o~ponad rząd wielkości,
+co pozwala ocenić skalowalność algorytmów w~szerokim zakresie.
+
+\begin{table}[ht]
+\centering
+\caption{Rozmiary grafów pieszych dla badanych obszarów
+         (po konsolidacji skrzyżowań, przed wstawieniem usług).}
+\label{tab:grafy}
+\begin{tabular}{l r r r}
+\hline
+\textbf{Obszar} & $|V|$ & $|E|$ & \textbf{Śr.\ stopień} \\
+\hline
+Gdańsk Południe & 5\,159   & 11\,745  & 4{,}55 \\
+Gdańsk          & 24\,610  & 53\,584  & 4{,}35 \\
+Londyn          & 186\,437 & 300\,862 & 3{,}23 \\
+\hline
+\end{tabular}
+\end{table}
+
+Po wstawieniu lokalizacji usług (procedura opisana w~podrozdziale~\ref{sec:dane:wstawianie})
+rozmiary grafów rosną o~liczbę wstawionych wierzchołków i~krawędzi.
+Tabela~\ref{tab:grafy_po} przedstawia rozmiary grafów po wstawieniu usług
+wraz z~liczbą lokalizacji w~poszczególnych kategoriach.
+
+\begin{table}[ht]
+\centering
+\caption{Rozmiary grafów po wstawieniu lokalizacji usług.}
+\label{tab:grafy_po}
+\begin{tabular}{l r r r}
+\hline
+\textbf{Obszar} & $|V|$ & $|E|$ & \textbf{Usługi} \\
+\hline
+Gdańsk Południe & 6\,106   & 12\,692  & 947 \\
+Gdańsk          & 32\,004  & 60\,978  & 7\,394 \\
+Londyn          & 270\,454 & 384\,879 & 84\,017 \\
+\hline
+\end{tabular}
+\end{table}
+
+\begin{table}[ht]
+\centering
+\caption{Liczba lokalizacji usług w~poszczególnych kategoriach NEXI.}
+\label{tab:uslugi_kategorie}
+\begin{tabular}{l r r r}
+\hline
+\textbf{Kategoria} & \textbf{Gd.\ Płd.} & \textbf{Gdańsk} & \textbf{Londyn} \\
+\hline
+education     & 61   & 406   & 4\,378 \\
+entertainment & 17   & 183   & 2\,910 \\
+grocery       & 221  & 1\,377 & 10\,507 \\
+health        & 77   & 557   & 4\,821 \\
+posts\_banks  & 73   & 512   & 3\,249 \\
+parks         & 22   & 219   & 3\,320 \\
+sustenance    & 99   & 1\,207 & 26\,370 \\
+shops         & 377  & 2\,933 & 28\,462 \\
+\hline
+\textbf{Łącznie} & \textbf{947} & \textbf{7\,394} & \textbf{84\,017} \\
+\hline
+\end{tabular}
+\end{table}
+
+Uzasadnienie wyboru tych trzech skali (lokalna, miejska, metropolia)
+zostało przedstawione we Wprowadzeniu (podrozdział~\ref{sec:intro:metodyka:obszary}).
