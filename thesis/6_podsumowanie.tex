@@ -1,2 +1,227 @@
 \mychapter{Podsumowanie i wnioski}
 \label{chap:podsumowanie}
+
+Praca dotyczyła analizy algorytmów najkrótszych ścieżek w problemie miasta
+$t$-minutowego. Punktem wyjścia była formalizacja zadania jako wielokrotnego
+wyznaczania zbiorów $C_k(t)$ i~ich części wspólnej $C(t)$ w~grafie pieszym
+miasta (rozdz.~\ref{chap:intro}). Na~podstawie przeglądu klasycznych
+algorytmów SSSP (rozdz.~\ref{chap:sssp}) jako podejście wyjściowe wybrano
+algorytm Dijkstry, a~następnie zaproponowano dwie modyfikacje ukierunkowane
+na~specyfikę zadania: ograniczenie przeszukiwania progiem czasu~$t$ oraz
+zastąpienie kopca binarnego kolejką kubełkową
+(rozdz.~\ref{chap:warianty-dijkstry}). Wszystkie warianty zaimplementowano
+na~wspólnej reprezentacji grafu i~we wspólnej infrastrukturze pomiarowej
+(rozdz.~\ref{chap:implementacja}), co~pozwoliło porównać je w~kontrolowanych
+warunkach na~trzech grafach pieszych o~rosnącej skali: Gdańsk~Południe,
+Gdańsk i~Londyn (rozdz.~\ref{chap:wyniki}; analiza empiryczna w~sekcjach
+\ref{sec:wyniki:p1}--\ref{sec:wyniki:laczne}). Poniżej zebrano
+odpowiedzi na~pytania badawcze \textbf{P1}--\textbf{P3} z~podrozdz.~\ref{sec:intro:cel},
+ograniczenia przyjętego podejścia oraz możliwe kierunki dalszych badań.
+
+\section{Podsumowanie wyników i odpowiedzi na pytania badawcze}
+\label{sec:podsum:odpowiedzi}
+
+Eksperymenty potwierdziły poprawność wszystkich trzech wariantów algorytmu
+oraz trybu wieloprocesowego: na~każdym z~trzech badanych obszarów zwracane
+zbiory $C(t)$ i~$C_k(t)$ były identyczne na~poziomie pełnych list
+identyfikatorów wierzchołków, niezależnie od~wariantu i~trybu wykonania.
+Pozwoliło to interpretować obserwowane różnice w~czasie wykonania jako
+efekt wyłącznie samej modyfikacji algorytmu lub trybu wywołania.
+
+Poniżej zestawiono odpowiedzi na~pytania \textbf{P1}--\textbf{P3}
+w~świetle podrozdziałów \ref{sec:wyniki:p1}--\ref{sec:wyniki:laczne}.
+
+\clearpage
+
+\paragraph{P1 (ograniczenie progiem~$t$).}
+W~rozważanych warunkach (próg $t=15$~min, kategorie usług NEXI, sieci piesze
+trzech badanych miast) wprowadzenie ograniczenia progiem daje przyspieszenie
+rzędu $1{,}05$--$1{,}09\times$. Wynik ten jest zgodny z~analizą
+z~podrozdz.~\ref{subsec:warianty:modified:zlozonosc}: w~problemie miasta
+15-minutowego, z~powodu redukcji wieloźródłowej przez superźródło kategorii
+(podrozdz.~\ref{sec:warianty:supersource}), izochrona $C_k(t)$ może pokrywać
+dominującą część grafu (tab.~\ref{tab:wyniki:pokrycie}), więc próg odcina
+stosunkowo niewielką pracę. Zysk z~tego wariantu byłby większy w~zadaniach
+o~pojedynczym źródle i~małej izochronie względem rozmiaru grafu, np.\ przy
+obliczaniu wskaźników dostępności z~pojedynczego adresu lub niewielkiego
+rejonu.
+
+\paragraph{P2 (kolejka kubełkowa).}
+Zastąpienie kopca binarnego kolejką kubełkową, przy tym samym ograniczeniu
+progiem~$t$, daje w~trybie sekwencyjnym przyspieszenie rosnące wraz
+ze~skalą grafu: brak mierzalnego zysku na~Gdańsku Południe ($1{,}00\times$),
+$1{,}11\times$ na~Gdańsku oraz $1{,}27\times$ na~Londynie. Wzorzec ten jest
+zgodny z~oczekiwaną zależnością logarytmiczną od~rozmiaru przeszukiwanego
+podgrafu: wyższe koszty stałe operacji na~tablicy kubełków rekompensują się
+dopiero wtedy, gdy iloczyn liczby operacji i~różnicy między logarytmem
+rozmiaru kolejki a~kosztem stałym staje się dostatecznie duży. Dla problemu
+miasta $15$-minutowego próg ten leży między obszarem dzielnicy a~obszarem całego
+miasta średniej wielkości.
+
+\paragraph{P3 (zrównoleglenie po~kategoriach).}
+Wieloprocesowość po~kategoriach usług ($K=8$ procesów roboczych) daje
+praktyczne przyspieszenie rzędu $1{,}9$--$2{,}5\times$ dla wariantów z~kopcem
+binarnym oraz $2{,}3$--$2{,}8\times$ dla wariantu kubełkowego. Wartości te są
+zauważalnie mniejsze od~naiwnego górnego oszacowania $K=8$, co~tłumaczą
+łącznie dwa czynniki: niezbilansowane obciążenie kategorii (czas całości
+zdominowany przez kategorię najliczniejszą) oraz hybrydowa architektura
+używanego procesora, w~której większość pracujących procesów ląduje na~wolniejszych
+rdzeniach energooszczędnych. Wariant kubełkowy skaluje się równolegle wyraźnie lepiej od~obu wariantów
+z~kopcem binarnym (tab.~\ref{tab:wyniki:p3}). Jak wykazano w~podrozdz.~\ref{sec:wyniki:p3},
+wynika to m.in.\ z~szybszego przetwarzania najliczniejszej kategorii
+oraz prostszych wzorców dostępu do~pamięci kolejki kubełkowej.
+
+\clearpage
+
+\paragraph{Łączny obraz.}
+W~rezultacie najlepsza badana kombinacja, czyli wariant kubełkowy w~trybie
+wieloprocesowym, jest dla obu większych grafów o~ponad $3{,}3\times$
+szybsza od~klasycznego algorytmu Dijkstry w~trybie sekwencyjnym
+(tab.~\ref{tab:wyniki:czasy_najlepsze}), przy identycznych zbiorach
+wynikowych. Zysk algorytmiczny i~równoległościowy łączą się w~przyspieszeniu
+bliskim iloczynowi składowych (por. podrozdz.~\ref{sec:wyniki:laczne}), więc
+w~analizach całego miasta warto stosować obie modyfikacje razem, choć
+w~trybie sekwencyjnym każda z~nich osobno daje umiarkowany zysk.
+
+\section{Ograniczenia pracy}
+\label{sec:podsum:ograniczenia}
+
+Uzyskane wyniki należy interpretować z~uwzględnieniem przyjętych
+założeń modelowych, implementacyjnych i~eksperymentalnych.
+
+\begin{itemize}
+  \item \textbf{Wąski zakres parametrów modelu.}
+        Wszystkie eksperymenty wykonano dla jednej wartości progu
+        $t=15$~min, jednej prędkości marszu $v=5$~km/h, ośmiu kategorii
+        usług NEXI oraz jednej szerokości kubełka $\Delta=1{,}0$~min
+        (podrozdz.~\ref{sec:intro:metodyka:scenariusze}). Zmiana którejkolwiek
+        z~tych wartości, w~szczególności znaczne obniżenie~$t$ albo
+        ograniczenie zbioru kategorii do~mniej licznych, zmieniłaby
+        relację izochrony do~rozmiaru grafu i~mogłaby zmienić układ
+        wniosków z~P1 oraz P2.
+  \item \textbf{Specyfika problemu z~superźródłem kategorii.}
+        Stosunkowo niewielki zysk wariantu ograniczonego progiem
+        wynika bezpośrednio z~zastosowania superźródła
+        (podrozdz.~\ref{sec:warianty:supersource}). W~zadaniach
+        o~innym charakterze, np.\ izochronach z~pojedynczego adresu
+        czy z~niewielkiego zbioru rejonów, wnioski z~P1
+        byłyby zapewne inne.
+  \item \textbf{Tylko trzy obszary i~tylko ruch pieszy.}
+        Skalowalność oceniana była na~trzech grafach: dzielnica, miasto
+        średniej wielkości, metropolia. Nie obejmuje obszarów o~zupełnie
+        innej sieci ulicznej (np.\ historycznych centrów
+        miast południowoeuropejskich, miast siatkowych typu USA, terenów
+        słabo zurbanizowanych). Rozważany jest też wyłącznie ruch
+        pieszy, bez~roweru, transportu publicznego ani modeli
+        multimodalnych.
+  \item \textbf{Model wag czasowych.}
+        Wagi krawędzi liczone są ze~stałej prędkości marszu i~długości
+        odcinka (podrozdz.~\ref{sec:intro:metodyka:dane}); pomijane są
+        czynniki takie jak~nachylenia, warunki pogodowe, czasy oczekiwania
+        na~przejściach dla pieszych czy dobowe lub sezonowe zmiany
+        dostępności usług. Model jest więc statyczny i~uśredniony.
+  \item \textbf{Implementacja w~Pythonie.}
+        Wszystkie warianty zostały zaimplementowane w~jednym języku
+        (Python~3.12, podrozdz.~\ref{sec:impl:srodowisko}); część
+        nieoptymalnych własności kolejki kubełkowej (np.\ koszt stały
+        pojedynczej operacji) zachowuje się tu inaczej niż w~języku
+        kompilowanym ze~ścisłą kontrolą układu pamięci. Wartości bezwzględne
+        czasów nie są więc bezpośrednio porównywalne z~implementacjami
+        w~C/C++ albo Rust; istotny jest dla nich stosunek czasów
+        między wariantami, a~nie sam czas wykonania.
+  \item \textbf{Pojedyncza platforma sprzętowa.}
+        Eksperymenty wykonano na~jednym laptopie z~procesorem o~architekturze
+        hybrydowej, łączącym rdzenie wydajne z~rdzeniami energooszczędnymi
+        (podrozdz.~\ref{sec:impl:srodowisko}). Obserwacja, że~zrównoleglenie
+        po~kategoriach daje zauważalnie mniej niż $K$-krotne przyspieszenie,
+        jest częściowo konsekwencją tej architektury; na~maszynie z~równorzędnymi
+        rdzeniami wynik mógłby być wyraźnie wyższy, choć~efekt
+        niezbilansowania kategorii utrzymałby się i~tak.
+\end{itemize}
+
+\section{Kierunki dalszych badań}
+\label{sec:podsum:dalsze}
+
+Z~uzyskanych wyników wynikają co~najmniej cztery sensowne rozszerzenia
+analizy.
+
+\paragraph{Wrażliwość wyników na~próg~$t$ i~szerokość kubełka~$\Delta$.}
+Wartości $t$ i~$\Delta$ najsilniej wpływają na~charakterystykę
+porównywanych wariantów; sensowne jest więc badanie
+wrażliwości wniosków względem obu parametrów.
+
+Wartość~$t$ wprost decyduje o~rozmiarze izochrony, a~tym samym o~tym,
+jak~dużą część grafu trzeba faktycznie przeszukać. Przy ustalonym
+$t=15$~min izochrony kategorii pokrywają niemal cały graf
+(tab.~\ref{tab:wyniki:pokrycie}), przez~co ograniczenie progiem (P1)
+daje niewielki zysk. W~miarę jak~$t\to 0$ izochrony kurczą się
+i~można oczekiwać, że~zarówno korzyść z~ograniczenia progiem, jak
+i~ogólny układ proporcji między wariantami algorytmu istotnie się
+zmienią.
+
+Szerokość kubełka~$\Delta$ jest natomiast kluczowym parametrem
+wariantu kubełkowego (P2): zbyt~małe~$\Delta$ generuje wiele
+niemal pustych kubełków i~zwiększa koszt liniowego skanowania
+tablicy, zbyt~duże~$\Delta$ prowadzi do~nadmiarowych wyciągnięć
+wierzchołków wewnątrz pojedynczego kubełka. Dobór $\Delta=1{,}0$~min był
+w~niniejszej pracy uzasadniony rozkładem wag krawędzi typowym
+dla~sieci pieszych (podrozdz.~\ref{subsec:warianty:bucket:delta}),
+jednak wpływ tego parametru na~czas wykonania w~różnych skalach
+grafu nie został tu zmierzony; warto sprawdzić, czy przy innym~$\Delta$
+wariant kubełkowy stałby się opłacalny już na~grafach o~skali Gdańska Południe.
+
+\paragraph{Implementacja w~języku kompilowanym.}
+Implementacja w~Pythonie była świadomą decyzją projektową, motywowaną
+prostotą wprowadzania modyfikacji i~bogatym ekosystemem narzędzi
+analizy danych geoprzestrzennych. Reimplementacja krytycznych pętli
+relaksacji w~języku kompilowanym (C/C++, Rust)
+pozwoliłaby ocenić, w~jakim stopniu obserwowane
+proporcje czasów między wariantami zachowują się przy~znacznie wyższej
+wartości bezwzględnej wydajności pojedynczego procesu.
+
+\clearpage
+
+\paragraph{Rozszerzenie modelu transportu.}
+Wreszcie, model wag czasowych można uczynić bogatszym, np.\ uwzględniając
+nachylenia terenu, czasy oczekiwania na~przejściach dla pieszych albo
+łącząc ruch pieszy z~rowerowym i~transportem publicznym.
+Każdy z~tych kierunków zmienia rozkład wag krawędzi
+w~grafie: dla pojedynczych, szybszych środków transportu (rower,
+samochód, transport publiczny w~przejazdach między przystankami) rozkład
+jest węższy, ponieważ maksymalne czasy pojedynczych odcinków są
+niższe.
+Interesujące byłoby zbadanie, jak~każda z~tych zmian rozkładu wpływa
+na~relację wydajności trzech wariantów Dijkstry, a~w~szczególności
+na~optymalny dobór szerokości kubełka~$\Delta$ w~wariancie kubełkowym.
+
+\section{Wnioski końcowe}
+\label{sec:podsum:wnioski}
+
+Problem miasta $t$-minutowego, traktowany jako zadanie obliczeniowe wielokrotnego
+wyznaczania izochron, daje się skutecznie rozwiązywać przy pomocy
+algorytmu Dijkstry, ale~jego praktyczna efektywność zależy w~istotnym
+stopniu od~drobnych decyzji implementacyjnych. Najważniejsze obserwacje
+wynikające z~niniejszej pracy są następujące:
+\begin{itemize}
+  \item proste ograniczenie przeszukiwania progiem~$t$ w~wariancie
+        z~superźródłem kategorii przy $t=15$~min daje niewielki zysk:
+        Izochrony kategorii pokrywają
+        wówczas niemal cały graf, więc próg odcina stosunkowo niewiele pracy;
+  \item zastąpienie kopca binarnego kolejką kubełkową okazuje się
+        opłacalne dopiero dla grafów odpowiednio dużych, ale~na~tej
+        skali daje stabilny, oczekiwany zysk logarytmiczny;
+  \item największa praktyczna korzyść pojawia się przy~złożeniu obu
+        ścieżek optymalizacji, szczególnie w~trybie wieloprocesowym,
+        w~którym wariant kubełkowy skaluje się wyraźnie lepiej
+        od~wariantów opartych na~kopcu binarnym.
+\end{itemize}
+
+Tak~sformułowane wnioski stanowią praktyczną wskazówkę dla projektowania
+narzędzi do~analizy dostępności w~skali miasta: w~analizach całego miasta
+warto łączyć ograniczenie progiem~$t$, kolejkę kubełkową, która w~badanych
+warunkach nie okazała się wolniejsza od~kopca binarnego, a~na~większych
+grafach dawała wyraźny zysk, oraz zrównoleglenie po~kategoriach usług,
+które w~każdym wariancie przynosiło zauważalne przyspieszenie.
+Jednocześnie wskazują one na~kierunki dalszych
+badań, w~których przyjęte tu uproszczenia można w~kontrolowany sposób
+uchylać i~konfrontować z~realiami szerszego zbioru scenariuszy urbanistycznych.

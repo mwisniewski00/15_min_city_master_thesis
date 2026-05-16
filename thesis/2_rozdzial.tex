@@ -1,2 +1,415 @@
-\mychapter{Podejście bazowe oparte na Dijkstrze dla problemu miasta 15-minutowego}
-\label{chap:podejscie_bazowe}
+\mychapter{Przegląd algorytmów najkrótszych ścieżek}
+\label{chap:sssp}
+
+W~rozdziale~\ref{chap:dane_i_model} opisano sposób, w~jaki problem miasta 15-minutowego
+zostaje sprowadzony do operacji na grafie ważonym $G=(V,E)$
+reprezentującym sieć pieszą. Wyznaczenie zbiorów dostępności $C_k(t)$
+oraz końcowego zbioru $C(t)=\bigcap_k C_k(t)$ wymaga wielokrotnego
+rozwiązywania problemu najkrótszych ścieżek na tym grafie. Konkretny
+wybór algorytmu rozwiązującego ten problem ma więc bezpośredni wpływ
+na praktyczną wydajność całego rozwiązania, a~jego uzasadnienie powinno
+opierać się na świadomym porównaniu dostępnych podejść.
+
+W~rozdziale tym omówiono cztery klasyczne algorytmy wyznaczania
+najkrótszych ścieżek, powszechnie opisywane w~podręcznikach i~pracach
+oryginalnych: Dijkstry~\cite{dijkstra},
+Bellmana-Forda~\cite{bellman1958}, A*~\cite{hart1968astar} oraz
+Floyda-Warshalla~\cite{floyd1962,warshall1962}. Dla każdego z~nich
+omówiono założenia dotyczące grafu wejściowego, ideę działania, złożoność
+obliczeniową oraz przydatność do problemu miasta 15-minutowego sformułowanego
+w~rozdz.~\ref{chap:intro}. Rozdział zamyka porównanie tych algorytmów
+oraz uzasadnienie wyboru algorytmu Dijkstry jako podstawy dalszych
+rozważań w~rozdziale~\ref{chap:warianty-dijkstry}.
+
+\section{Klasyfikacja problemów najkrótszych ścieżek}
+\label{sec:sssp:klasyfikacja}
+
+Problem najkrótszych ścieżek w~grafie ważonym $G=(V,E)$ z~funkcją wag
+$w:E\to\mathbb{R}$ występuje w~kilku wariantach różniących się zakresem
+poszukiwanych ścieżek oraz strukturą wag krawędzi. Z~punktu widzenia
+zadań analizy dostępności istotne są trzy klasyczne warianty
+\cite{cormen2009introduction}:
+
+\begin{description}
+  \item[SSSP (\emph{single-source shortest paths}).]
+        Dla ustalonego wierzchołka źródłowego $s\in V$ wyznaczyć
+        odległości $d_G(s,v)$ dla wszystkich $v\in V$. Zwracana jest
+        zwykle tablica odległości oraz, opcjonalnie, drzewo
+        najkrótszych ścieżek.
+\clearpage
+  \item[SPSP (\emph{single-pair shortest path}).]
+        Dla pary $(s,t)\in V\times V$ wyznaczyć $d_G(s,t)$ oraz, w~razie
+        potrzeby, jedną z~realizujących tę odległość ścieżek. Wariant
+        ten można rozwiązać dowolnym algorytmem SSSP, lecz dostępne
+        informacje o~strukturze grafu (np.\ heurystyka odległościowa)
+        pozwalają w~praktyce na istotne przyspieszenia.
+  \item[APSP (\emph{all-pairs shortest paths}).]
+        Wyznaczyć odległości $d_G(u,v)$ dla wszystkich par
+        $(u,v)\in V\times V$. Wariant ten można rozwiązać jako
+        $|V|$ niezależnych przebiegów SSSP albo zastosować
+        dedykowane algorytmy operujące bezpośrednio na macierzy
+        odległości.
+\end{description}
+
+Drugi wymiar klasyfikacji dotyczy dopuszczalnych wag krawędzi. Część
+algorytmów (m.in.\ Dijkstry) zakłada nieujemność wag, inne
+(m.in.\ Bellmana-Forda, Floyda-Warshalla) dopuszczają wagi ujemne, pod
+warunkiem braku cykli o~ujemnej sumie wag. Ta cecha decyduje o~praktycznej
+przydatności algorytmu w~konkretnym zastosowaniu. W~zadaniu miasta 15-minutowego wagi krawędzi odpowiadają czasom przejścia pieszo i~są z~natury
+nieujemne (podrozdz.~\ref{sec:dane:wagi}).
+
+Z~perspektywy problemu miasta 15-minutowego zadanie nie jest klasycznym SSSP
+w~ścisłym sensie: dla każdej kategorii usług $S_k$ poszukiwany jest
+zbiór wierzchołków osiągalnych w~czasie $\le t$ od dowolnej usługi tej
+kategorii. Wariant ten można jednak sprowadzić do SSSP poprzez
+konstrukcję wieloźródłową (\emph{supersource}), w~której do grafu
+dodawany jest wirtualny wierzchołek $s^\star_k$ połączony krawędziami
+o~wadze zerowej ze wszystkimi $s\in S_k$ \cite{Lam2024}. Wówczas
+$d_{G^\star}(s^\star_k,v)=\min_{s\in S_k}d_G(s,v)=\tau_k(v)$, a~obliczenie
+zbioru $C_k(t)$ sprowadza się do jednego uruchomienia algorytmu SSSP.
+Szczegóły tej konstrukcji oraz jej własności zostaną przedstawione
+w~rozdz.~\ref{chap:warianty-dijkstry}.
+
+\section{Algorytm Dijkstry}
+\label{sec:sssp:dijkstra}
+
+Algorytm zaproponowany przez E.~W.~Dijkstrę w~1959 roku \cite{dijkstra}
+jest podstawowym algorytmem SSSP dla grafów z~nieujemnymi wagami
+krawędzi. Dla grafu $G=(V,E)$ z~funkcją wag $w:E\to\mathbb{R}_{\ge 0}$
+oraz wierzchołka źródłowego $s\in V$ wyznacza on odległości $d_G(s,v)$
+dla każdego $v\in V$ osiągalnego z~$s$.
+
+\subsection{Idea działania}
+
+Algorytm opiera się na zasadzie zachłannego rozszerzania zbioru
+wierzchołków o~znanej, ostatecznej odległości od źródła. W~każdym kroku
+ze zbioru wierzchołków „otwartych” (jeszcze nieprzetworzonych) wybierany
+jest ten o~najmniejszej tymczasowej odległości od~$s$; wybrana wartość
+staje się ostateczną odległością tego wierzchołka, a~następnie
+algorytm \emph{relaksuje} każdą krawędź wychodzącą z~niego, aktualizując
+tymczasowe odległości jej sąsiadów.
+
+\clearpage
+
+Kluczową własnością algorytmu jest to, że w~chwili wybrania wierzchołka $v$
+o~najmniejszej tymczasowej odległości, odległość ta jest już równa rzeczywistej
+odległości $d_G(s,v)$ i~nie wymaga dalszych aktualizacji. Poprawność tego
+zachłannego wyboru opiera się na nieujemności wag krawędzi: dzięki temu
+każda ścieżka przechodząca przez jeszcze nieprzetworzony wierzchołek $u$
+(o~odległości co najmniej takiej jak $v$) może jedynie zwiększyć lub
+zachować tę odległość, nigdy jej nie zmniejszyć.
+
+\subsection{Schemat algorytmu}
+
+Rozważamy standardowy wariant z~kolejką priorytetową opartą na kopcu
+binarnym (kopcu minimalnym). Schemat algorytmu przedstawiono poniżej.
+
+\begin{codebox}
+\Procname{$\proc{Dijkstra}(G, s)$}
+\li \For each $v \in V \setminus \{s\}$
+\li \Do $\id{dist}[v] \gets \infty$
+    \End
+\li $\id{dist}[s] \gets 0$
+\li $H \gets \{(0, s)\}$ \quad // kopiec minimalny par $(\text{odległość}, \text{wierzchołek})$
+\li \While $H \neq \emptyset$
+\li \Do $(d, u) \gets \proc{Extract-Min}(H)$
+\li     \If $d > \id{dist}[u]$
+\li     \Then \kw{continue}
+        \End
+\li     \For each $(u, v) \in E$
+\li     \Do $\id{nd} \gets d + w(u, v)$
+\li         \If $\id{nd} < \id{dist}[v]$
+\li         \Then $\id{dist}[v] \gets \id{nd}$
+\li             $\proc{Heap-Insert}(H, (\id{nd}, v))$
+            \End
+        \End
+    \End
+\li \Return $\id{dist}$
+\end{codebox}
+
+Warunek w~liniach~7--8 ($d > \id{dist}[u]$) jest standardowym zamiennikiem
+operacji \proc{Decrease-Key}: gdy do kopca trafia nowa, mniejsza
+odległość do~$v$, stara kopia pozostaje w~nim aż do swojego naturalnego
+wyciągnięcia, a~wówczas zostaje odfiltrowana. Pozwala to korzystać ze
+standardowej, niemodyfikowanej implementacji kopca binarnego.
+
+\subsection{Złożoność}
+
+Przy implementacji opartej na kopcu binarnym koszt operacji
+\proc{Extract-Min} oraz \proc{Heap-Insert} wynosi $\mathcal{O}(\log|V|)$.
+Każdy wierzchołek jest faktycznie wyciągany z~kopca co najwyżej raz (kolejne wyciągnięcia są odfiltrowywane przez warunek
+$d>\id{dist}[u]$), a~każda krawędź wywołuje co najwyżej jedną operację relaksacji, dlatego łączna złożoność czasowa wynosi
+\[
+T_{\mathrm{Dijkstra}}(|V|,|E|) \;=\; \mathcal{O}\bigl((|V|+|E|)\log|V|\bigr).
+\]
+Dla rzadkich grafów, jakie pojawiają się w~tym zadaniu ($|E|=\mathcal{O}(|V|)$;
+średni stopień w~tab.~\ref{tab:grafy}), oszacowanie to redukuje się do
+$\mathcal{O}(|V|\log|V|)$.
+
+Stosując bardziej zaawansowane struktury danych można poprawić powyższe
+oszacowanie. Fredman i~Tarjan wykazali \cite{fredman1987fibonacci}, że używając kopca
+Fibonacciego można osiągnąć złożoność $\mathcal{O}(|E| + |V|\log|V|)$.
+Asymptotyczny zysk wynika z~obniżenia kosztu operacji \proc{Decrease-Key}
+z~$\mathcal{O}(\log|V|)$ (kopiec binarny) do $\mathcal{O}(1)$ (kopiec Fibonacciego); ponieważ liczba potencjalnych
+relaksacji jest ograniczona przez $|E|$, dla grafów gęstych
+(${|E|=\Theta(|V|^2)}$) usunięcie czynnika $\log|V|$ z~tej części kosztu
+prowadzi do istotnej poprawy.
+
+W~kontekście problemu miasta 15-minutowego korzyść z~kopca Fibonacciego okazuje
+się iluzoryczna. W~przyjętej implementacji (schemat powyżej) zamiast operacji
+\proc{Decrease-Key} stosujemy wyłącznie \proc{Heap-Insert} z~odfiltrowywaniem
+przestarzałych wpisów przy \proc{Extract-Min}; asymptotyczna przewaga kopca
+Fibonacciego w~tańszej \proc{Decrease-Key} nie przekłada się więc bezpośrednio
+na ten wariant. Badane grafy piesze są ponadto rzadkie ($|E|=\mathcal{O}(|V|)$,
+tab.~\ref{tab:grafy}), więc granice $\mathcal{O}((|V|+|E|)\log|V|)$ i
+$\mathcal{O}(|E|+|V|\log|V|)$ sprowadzają się do tego samego rzędu
+$\Theta(|V|\log|V|)$ i~różnica asymptotyczna zanika. Nawet w~kanonicznej
+implementacji z~\proc{Decrease-Key} liczba faktycznych popraw odległości byłaby
+tu niewielka: przy niewielkim średnim stopniu wierzchołka (tab.~\ref{tab:grafy})
+i~w~praktyce jednorodnych wagach (czasach przejścia pieszo) większość
+wierzchołków otrzymuje ostateczną odległość już przy pierwszej relaksacji.
+Wreszcie sam kopiec Fibonacciego wiąże się ze znacznym kosztem stałym na
+operację, który w~typowych implementacjach bywa większy niż zysk wynikający
+z~lepszej złożoności asymptotycznej.
+
+Te wnioski pokrywają się z~empirycznym porównaniem kolejek priorytetowych
+dla Dijkstry (Lewis~\cite{lewis2023dijkstra_pq}): na grafach odwzorowujących
+rzeczywiste sieci prostsze kopce binarne dają krótszy czas
+obliczeń niż kopiec Fibonacciego, mimo gorszej granicy asymptotycznej.
+Z~tego powodu, zgodnie m.in.\ z~\cite{Lam2024}, za punkt odniesienia przyjmuje
+się implementację Dijkstry z~kopcem binarnym.
+
+\subsection{Przydatność do problemu miasta 15-minutowego}
+
+Algorytm Dijkstry spełnia wszystkie założenia problemu opisanego
+w~rozdz.~\ref{chap:intro}: wagi krawędzi (czasy przejścia pieszo) są
+nieujemne, a~zadanie polega na rozwiązaniu wariantu SSSP po dodaniu
+superźródła kategorii. W~literaturze poświęconej bezpośrednio problemowi
+miasta 15-minutowego (m.in.\ \cite{Lam2024,barbieri2023graph,olivari2023presenting})
+algorytm Dijkstry jest stosowany praktycznie wyłącznie, zazwyczaj
+z~drobnymi modyfikacjami inżynieryjnymi. W~podrozdz.~\ref{sec:sssp:porownanie} uzasadnimy ten wybór porównaniem
+z~pozostałymi omawianymi algorytmami.
+
+\clearpage
+
+\section{Algorytm Bellmana-Forda}
+\label{sec:sssp:bf}
+
+Algorytm Bellmana-Forda \cite{bellman1958} jest drugim klasycznym
+algorytmem SSSP. W~odróżnieniu od algorytmu Dijkstry dopuszcza on
+krawędzie o~wagach ujemnych, a~dodatkowo wykrywa obecność cykli
+o~ujemnej sumie wag osiągalnych ze źródła.
+
+\subsection{Idea działania}
+
+Algorytm wielokrotnie relaksuje wszystkie krawędzie grafu. W~kolejnych
+iteracjach poprawiane są oszacowania tablicy odległości, dopóki ich
+wartości nie ustabilizują się lub nie zostanie wyczerpana maksymalna
+liczba iteracji równa $|V|-1$. Liczba ta wynika z~obserwacji, że
+najkrótsza ścieżka prosta między dwoma wierzchołkami nie może mieć
+więcej niż $|V|-1$ krawędzi: po~$|V|-1$ iteracjach każda taka ścieżka
+zostaje „przebadana” poprzez sekwencję relaksacji jej krawędzi. Jeżeli
+w~iteracji~$|V|$ jakakolwiek relaksacja prowadzi do dalszej poprawy
+odległości, oznacza to obecność cyklu o~ujemnej sumie wag osiągalnego
+ze~źródła.
+
+\subsection{Schemat algorytmu}
+
+\begin{codebox}
+\Procname{$\proc{Bellman-Ford}(G, s)$}
+\li \For each $v \in V \setminus \{s\}$
+\li \Do $\id{dist}[v] \gets \infty$
+    \End
+\li $\id{dist}[s] \gets 0$
+\li \For $i \gets 1$ \To $|V|-1$
+\li \Do \For each $(u, v) \in E$
+\li     \Do \If $\id{dist}[u] + w(u, v) < \id{dist}[v]$
+\li         \Then $\id{dist}[v] \gets \id{dist}[u] + w(u, v)$
+            \End
+        \End
+    \End
+\li \For each $(u, v) \in E$
+\li \Do \If $\id{dist}[u] + w(u, v) < \id{dist}[v]$
+\li     \Then \Return „graf zawiera ujemny cykl osiągalny z~$s$”
+        \End
+    \End
+\li \Return $\id{dist}$
+\end{codebox}
+
+\subsection{Złożoność}
+
+Każda z~$|V|-1$ iteracji wykonuje przegląd wszystkich krawędzi grafu,
+co daje łączną złożoność czasową
+\[
+T_{\mathrm{BF}}(|V|,|E|) \;=\; \mathcal{O}(|V|\cdot|E|).
+\]
+W~porównaniu z~algorytmem Dijkstry oszacowanie to jest gorsze o~czynnik
+$|V|/\log|V|$, co dla grafów rozważanych w~tej pracy
+(tab.~\ref{tab:grafy}) oznacza około 2--3 rzędów wielkości w~przypadku
+Gdańska (i~Gdańska Południe) oraz około 4 rzędów wielkości
+w~przypadku Londynu.
+
+\subsection{Przydatność do problemu miasta 15-minutowego}
+
+Wagi krawędzi w~grafie sieci pieszej są z~definicji nieujemne
+(podrozdz.~\ref{sec:dane:wagi}), dlatego dopuszczalność wag ujemnych
+przez algorytm Bellmana-Forda jest w~rozważanym zadaniu cechą zbędną.
+Algorytm ten zostałby wybrany zamiast Dijkstry jedynie w~sytuacji,
+w~której nieujemność wag nie jest gwarantowana. Przy
+przyjętym modelu wag czasowych algorytm Bellmana-Forda byłby istotnie
+wolniejszy od algorytmu Dijkstry, nie oferując w~zamian żadnej cechy
+funkcjonalnej istotnej dla problemu.
+
+\section{Algorytm A*}
+\label{sec:sssp:astar}
+
+Algorytm A* \cite{hart1968astar} jest rozwinięciem algorytmu Dijkstry
+ukierunkowanym na wariant SPSP (\emph{single-pair shortest path}).
+Jego cechą wyróżniającą jest wykorzystanie \emph{heurystyki}
+$h:V\to\mathbb{R}_{\ge 0}$ szacującej odległość każdego wierzchołka do
+ustalonego celu $t\in V$, dzięki czemu przeszukiwanie zostaje wcześnie
+ukierunkowane na obiecujące fragmenty grafu.
+
+\subsection{Idea działania}
+
+Schemat algorytmu jest analogiczny do algorytmu Dijkstry, z~tą różnicą,
+że priorytet wierzchołka $v$ w~kolejce priorytetowej wyznaczany jest
+przez sumę
+\[
+f(v) \;=\; g(v) + h(v),
+\]
+gdzie $g(v)$ jest dotychczasową, najlepszą znaną długością ścieżki
+ze~źródła do~$v$, a~$h(v)$ heurystycznym oszacowaniem odległości
+$v\to t$. Algorytm Dijkstry odpowiada szczególnemu przypadkowi
+$h\equiv 0$.
+
+Aby A* gwarantował znalezienie optymalnej ścieżki, heurystyka musi być
+\emph{dopuszczalna} (\emph{admissible}), tj.\ nie przeszacowywać
+rzeczywistej odległości: $h(v)\le d_G(v,t)$ dla wszystkich $v\in V$.
+Dodatkowa własność \emph{spójności} (\emph{consistency}), wyrażona warunkiem
+$h(u)\le w(u,v)+h(v)$ dla każdej krawędzi $(u,v)\in E$, gwarantuje, że
+żaden wierzchołek nie zostanie ponownie rozszerzony, co dodatkowo
+upraszcza implementację.
+
+Dla zadań nawigacji w~rzeczywistej przestrzeni typowo dopuszczalną
+heurystyką jest odległość euklidesowa do celu (lub jej przeskalowanie
+przez minimalną wagę na jednostkę długości). W~problemie najkrótszej
+trasy w~sieci drogowej między dwoma punktami zastosowanie takiej
+heurystyki skutkuje zwykle wielokrotnym przyspieszeniem względem
+algorytmu Dijkstry, gdyż przeszukiwanie zostaje skoncentrowane wzdłuż
+korytarza łączącego źródło z~celem.
+
+\clearpage
+
+\subsection{Złożoność}
+
+W~najgorszym przypadku (np.\ przy heurystyce trywialnej $h\equiv 0$)
+złożoność A* pokrywa się z~algorytmem Dijkstry. W~praktyce, dla
+„dobrych” heurystyk, liczba rozszerzonych wierzchołków jest znacząco
+mniejsza, a~obserwowany czas wykonania bywa wyraźnie krótszy. Formalne
+oszacowania zysku zależą jednak od konkretnej struktury grafu i~jakości
+heurystyki, a~więc nie mają tak zwięzłej postaci jak dla algorytmu
+Dijkstry.
+
+\subsection{Przydatność do problemu miasta 15-minutowego}
+
+Przy wyznaczaniu zbioru $C_k(t)$ nie ma pojedynczego, wyróżnionego
+wierzchołka docelowego: interesuje nas \emph{cały} zbiór wierzchołków
+osiągalnych z~superźródła $s^\star_k$ w~czasie co najwyżej $t$.
+Heurystyka $h$ jest sensowna dopiero wtedy, gdy względem jednego celu
+można szacować pozostałą drogę, czego w~modelu miasta 15-minutowego po prostu
+nie definiujemy.
+
+Stąd klasyczny A* nie jest tu naturalnym narzędziem: przyspieszenia
+widoczne przy wyznaczaniu najkrótszej ścieżki między dwoma wskazanymi
+wierzchołkami nie przekładają się wprost na budowę izochron. W~pracach
+poświęconych miastu 15-minutowemu algorytm A* praktycznie się nie pojawia.
+
+\section{Algorytm Floyda-Warshalla}
+\label{sec:sssp:fw}
+
+Algorytm Floyda-Warshalla \cite{floyd1962,warshall1962} rozwiązuje
+problem APSP (\emph{all-pairs shortest paths}). Dla grafu $G=(V,E)$
+o~$n=|V|$ wierzchołkach wyznacza on macierz odległości
+$D\in\mathbb{R}^{n\times n}$, w~której $D[u][v]=d_G(u,v)$ dla każdej
+pary $(u,v)\in V\times V$.
+
+\subsection{Idea działania}
+
+Algorytm opiera się na programowaniu dynamicznym po~zbiorze dopuszczalnych
+wierzchołków pośrednich. Niech $D^{(k)}[u][v]$ oznacza długość
+najkrótszej ścieżki z~$u$ do~$v$, której wszystkie wierzchołki pośrednie
+należą do zbioru $\{1,\dots,k\}$. Dla $k=0$ jest to bezpośrednia waga
+krawędzi (lub $\infty$ przy braku krawędzi), natomiast dla $k\ge 1$
+zachodzi zależność rekurencyjna
+\[
+D^{(k)}[u][v] \;=\; \min\bigl(\, D^{(k-1)}[u][v],\; D^{(k-1)}[u][k] + D^{(k-1)}[k][v] \,\bigr).
+\]
+Po $n$ iteracjach otrzymujemy $D^{(n)}=D$, czyli macierz rzeczywistych
+odległości dla wszystkich par wierzchołków.
+
+\clearpage
+
+\subsection{Złożoność}
+
+Algorytm wykonuje trzy zagnieżdżone pętle po wierzchołkach, dlatego
+\[
+T_{\mathrm{FW}}(|V|) \;=\; \mathcal{O}(|V|^3)
+\]
+Istotną cechą algorytmu jest to, że czas wykonania nie zależy od $|E|$:
+pełna macierz odległości powstaje w~tym samym koszcie dla grafu gęstego
+jak i~rzadkiego.
+
+\subsection{Przydatność do problemu miasta 15-minutowego}
+
+Floyd-Warshall rozwiązuje problem APSP, podczas gdy zadanie miasta 15-minutowego wymaga jedynie rozwiązań SSSP dla niewielkiej liczby źródeł
+(po jednym superźródle na kategorię usług). Wyznaczanie pełnej macierzy
+odległości jest w~tym kontekście znacznym nadmiarem informacji, przy
+koszcie obliczeniowym nieproporcjonalnie wysokim względem potrzeb zadania.
+
+\section{Porównanie i wybór algorytmu dla problemu miasta 15-minutowego}
+\label{sec:sssp:porownanie}
+
+Tabela~\ref{tab:sssp_porownanie} podsumowuje cztery omówione algorytmy
+pod kątem rozwiązywanego wariantu problemu, dopuszczalnych wag krawędzi
+oraz złożoności asymptotycznej.
+
+\begin{table}[ht]
+\centering
+\caption{Porównanie omówionych algorytmów najkrótszych ścieżek.
+Złożoność algorytmu A* podana jest jako ograniczenie górne;
+faktyczny czas wykonania zależy od jakości użytej heurystyki.}
+\label{tab:sssp_porownanie}
+\begin{tabular}{l l l l}
+\hline
+\textbf{Algorytm} & \textbf{Wariant} & \textbf{Dopuszczalne wagi} & \textbf{Złożoność czasowa} \\
+\hline
+Dijkstra            & SSSP & nieujemne                    & $\mathcal{O}((|V|+|E|)\log|V|)$ \\
+Bellman-Ford        & SSSP & dowolne (bez ujemnych cykli) & $\mathcal{O}(|V|\cdot|E|)$      \\
+A*                  & SPSP & nieujemne                    & $\mathcal{O}((|V|+|E|)\log|V|)$ \\
+Floyd-Warshall      & APSP & dowolne (bez ujemnych cykli) & $\mathcal{O}(|V|^3)$            \\
+\hline
+\end{tabular}
+\end{table}
+
+Wybór algorytmu Dijkstry na dalszą część pracy wynika wprost z charakterystyki problemu.
+Po dodaniu superźródła dla kategorii otrzymujemy SSSP, więc
+pełne APSP metodą Floyda-Warshalla ($\mathcal{O}(|V|^3)$) byłoby
+nieuzasadnione. Wagi czasów przejścia są nieujemne, więc obsługa wag
+ujemnych w~algorytmie Bellmana-Forda nic nie wnosi, a~koszt rośnie do
+$\mathcal{O}(|V|\cdot|E|)$ zamiast $\mathcal{O}((|V|+|E|)\log|V|)$.
+Brak pojedynczego celu utrudnia z~kolei sensowne użycie klasycznego A*:
+bez nietrywialnej heurystyki kierunkowej metoda ta sprowadza się w~praktyce
+do algorytmu Dijkstry.
+
+Wybór algorytmu Dijkstry jest również spójny z~praktyką literatury
+poświęconej bezpośrednio problemowi miasta 15-minutowego, w~której algorytm
+ten występuje praktycznie jako jedyny używany algorytm SSSP
+\cite{Lam2024,barbieri2023graph,olivari2023presenting}.
+
+Ze względu na specyfikę zadania (ograniczony zasięg izochron, wielokrotne
+uruchamianie algorytmu dla różnych kategorii usług, znana struktura
+wag czasowych) klasyczny algorytm Dijkstry z~kopcem binarnym pozostaje
+podejściem bazowym, ale nie wykorzystuje w~pełni dostępnych własności
+problemu. Modyfikacje, które lepiej wykorzystują te własności,
+omówione są w~rozdz.~\ref{chap:warianty-dijkstry}.

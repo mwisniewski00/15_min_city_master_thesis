@@ -1,2 +1,428 @@
 \mychapter{Wyniki eksperymentów}
 \label{chap:wyniki}
+
+W~rozdziałach \ref{chap:warianty-dijkstry} i~\ref{chap:implementacja} opisano
+trzy warianty algorytmu Dijkstry oraz wspólną infrastrukturę implementacyjną,
+w~obrębie której zostały one porównane. Niniejszy rozdział prezentuje wyniki
+eksperymentów przeprowadzonych zgodnie z~metodyką opisaną w~podrozdziale
+\ref{sec:impl:metodyka}: na~trzech grafach pieszych
+(Gdańsk~Południe, Gdańsk, Londyn; tab.~\ref{tab:grafy_po}), dla trzech wariantów
+algorytmu (bazowy, ograniczony progiem~$t$, kubełkowy) oraz dla dwóch trybów
+wykonania (sekwencyjny, wieloprocesowy po~kategoriach usług), z~$100$
+powtórzeniami na~każdą kombinację. Próg czasu we wszystkich eksperymentach
+wynosi $t=15$~min, prędkość marszu $v=5\,\mathrm{km/h}$, a~szerokość kubełka
+$\Delta=1{,}0$~min (uzasadnienie w~podrozdz.~\ref{subsec:warianty:bucket:delta}).
+
+Dwa pierwsze podrozdziały sprawdzają poprawność wyników i~prezentują same
+wynikowe izochrony na~mapach badanych obszarów; trzeci zestawia czasy
+wykonania w~postaci pełnej tabeli pomiarowej. Kolejne trzy podrozdziały
+interpretują te liczby pod~kątem pytań badawczych
+\textbf{P1}--\textbf{P3} sformułowanych w~podrozdziale~\ref{sec:intro:cel}:
+wpływu ograniczenia progiem~$t$, zysku z~zastąpienia kopca binarnego kolejką
+kubełkową oraz przyspieszenia uzyskiwanego przez zrównoleglenie obliczeń
+po~kategoriach usług. Ostatni podrozdział analizuje łączny efekt obu modyfikacji
+algorytmicznych i~zrównoleglenia. Podsumowanie odpowiedzi
+na~pytania \textbf{P1}--\textbf{P3} wraz z~ograniczeniami metodyki
+i~kierunkami dalszych badań znajduje się w~rozdz.~\ref{chap:podsumowanie}.
+
+\section{Walidacja poprawności wyników}
+\label{sec:wyniki:poprawnosc}
+
+Zgodnie z~procedurą opisaną w~podrozdz.~\ref{sec:impl:metodyka},
+przed przystąpieniem do~analizy czasów porównano zwracane zbiory
+$C(t)=\bigcap_k C_k(t)$ oraz wszystkie zbiory cząstkowe $C_k(t)$
+między trzema wariantami algorytmu i~między trybem sekwencyjnym
+a~wieloprocesowym. Porównanie wykonywane jest na~poziomie pełnych,
+posortowanych list identyfikatorów wierzchołków, a~nie samych liczności;
+gwarantuje to, że dwa zbiory o~tej samej liczności, lecz różnej zawartości,
+zostaną zaklasyfikowane jako niezgodne.
+
+\clearpage
+
+Wszystkie zestawienia dały identyczne zbiory. W~szczególności
+liczność $|C(t)|$ przyjmuje wartości $3\,104$ dla Gdańska Południe,
+$21\,694$ dla Gdańska oraz $208\,610$ dla Londynu, niezależnie od~wariantu
+algorytmu i~od~trybu wykonania. Pozwala to przypisać obserwowane różnice
+w~czasie wykonania wyłącznie zmianom samego algorytmu lub trybu wywołania,
+a~nie różnicom w~tym, co liczone.
+
+\section{Wizualizacja wynikowych zbiorów $C(t)$}
+\label{sec:wyniki:mapy}
+
+Aby skonfrontować liczbowy opis zbiorów $C(t)$ z~ich rzeczywistą strukturą
+przestrzenną, wynikowe izochrony zostały zwizualizowane na~tle sieci pieszej
+każdego z~trzech badanych obszarów. Ponieważ wszystkie trzy warianty algorytmu
+zwracają identyczne zbiory $C(t)$ (sekcja~\ref{sec:wyniki:poprawnosc}),
+wystarczy zaprezentować mapy dla jednego z~nich.
+
+Kolorowanie odbywa się na~poziomie krawędzi grafu pieszego, nie pojedynczych
+wierzchołków. Konkretnie, dla krawędzi $(u,v)\in E$:
+\begin{itemize}
+  \item \textcolor[HTML]{2ca02c}{kolor zielony} oznacza, że \emph{oba}
+        końce krawędzi należą do~zbioru $C(t)$, tj.\ z~obu końców można
+        dotrzeć do~wszystkich kategorii usług w~czasie $\le t$;
+  \item \textcolor[HTML]{d62728}{kolor czerwony} oznacza, że co~najmniej
+        jeden koniec krawędzi nie należy do~$C(t)$.
+\end{itemize}
+Taki sposób wizualizacji pozwala odczytać wynik jak~mapę uliczną: zielone
+ulice spełniają warunek dostępności 15-minutowej do~wszystkich kategorii
+usług, a~czerwone go nie spełniają. Wariant z~kolorowaniem krawędziowym, zamiast
+punktowego wyróżnienia samych wierzchołków zbioru $C(t)$, został zainspirowany
+wizualizacjami z~pracy Lama~\cite{Lam2024}.
+
+Rysunki \ref{fig:wyniki:mapa_gdansk_poludnie}--\ref{fig:wyniki:mapa_london}
+przedstawiają mapy wynikowe trzech badanych obszarów. Na~każdej z~nich
+udział zielonych krawędzi w~sieci pieszej dobrze odpowiada wartościom
+$|C(t)|/|V|$ z~tab.~\ref{tab:wyniki:pokrycie}: $51{,}9\%$ krawędzi
+przy $50{,}8\%$ wierzchołków dla Gdańska Południe, $68{,}7\%$ przy $67{,}8\%$
+dla Gdańska oraz $75{,}2\%$ przy $77{,}1\%$ dla Londynu. Drobne rozbieżności
+(rzędu 1--2 punktów procentowych) wynikają z~tego, że krawędzie zaliczane są
+do~„zielonych” dopiero wtedy, gdy oba ich końce należą do~$C(t)$; rozkład
+zgodności obu końców na~poziomie pojedynczych krawędzi zależy więc od~spójności
+przestrzennej zbioru $C(t)$.
+
+Z~map widać też regularność, której tabele liczbowe same nie oddają.
+Na~każdym z~obszarów zielona część sieci pokrywa się z~zaludnioną,
+ciasną tkanką uliczną centrów dzielnic, natomiast czerwone fragmenty
+koncentrują się na~obrzeżach (Gdańsk Południe: północno-zachodnia
+część obszaru i~rejony przy granicy administracyjnej; Gdańsk: peryferyjne
+fragmenty na~zachodzie i~południu; Londyn: pas zewnętrzny Greater London).
+Jest to konsekwencja sposobu, w~jaki rozłożone są lokalizacje usług:
+ich gęstość rośnie wraz z~gęstością zaludnienia, więc obszary peryferyjne,
+ekstensywnie zabudowane lub niezabudowane (parki, tereny przemysłowe,
+lotniska, magistrale tranzytowe), pozostają poza zasięgiem $t=15$~min marszu
+do~co~najmniej jednej kategorii.
+
+\begin{figure}[ht]
+      \centering
+      \includegraphics[width=0.85\textwidth]{gdansk_poludnie_15mc_modified.png}
+      \caption{Mapa zbioru $C(t)$ dla Gdańska Południe ($t=15$~min, $\Delta=1{,}0$~min).
+      Zielone odcinki to fragmenty sieci, których oba końce mieszczą się w~zbiorze
+      $C(t)$; czerwone to fragmenty z~co~najmniej jednym końcem poza $C(t)$.}
+      \label{fig:wyniki:mapa_gdansk_poludnie}
+      \end{figure}
+      
+      \begin{figure}[ht]
+      \centering
+      \includegraphics[width=0.85\textwidth]{gdansk_15mc_modified.png}
+      \caption{Mapa zbioru $C(t)$ dla Gdańska ($t=15$~min, $\Delta=1{,}0$~min).
+      Kolorowanie jak~na~rys.~\ref{fig:wyniki:mapa_gdansk_poludnie}.}
+      \label{fig:wyniki:mapa_gdansk}
+      \end{figure}
+      
+      \begin{figure}[ht]
+      \centering
+      \includegraphics[width=0.85\textwidth]{london_15mc_modified.png}
+      \caption{Mapa zbioru $C(t)$ dla Londynu ($t=15$~min, $\Delta=1{,}0$~min).
+      Kolorowanie jak~na~rys.~\ref{fig:wyniki:mapa_gdansk_poludnie}.}
+      \label{fig:wyniki:mapa_london}
+\end{figure}
+
+\clearpage
+
+\section{Czasy wykonania}
+\label{sec:wyniki:tabela}
+
+Tabela~\ref{tab:wyniki:wszystkie} zestawia średni czas, odchylenie standardowe oraz
+minimum i~maksimum czasu pojedynczej iteracji ze $100$ powtórzeń dla każdej
+kombinacji (graf, wariant, tryb). Wszystkie wartości wyrażone są w~sekundach.
+
+\begin{table}[H]
+\centering
+\caption{Czasy wykonania pojedynczego uruchomienia algorytmu ($100$ powtórzeń),
+w~sekundach. Tryb \emph{sekw.}\ oznacza wykonanie jednoprocesowe,
+tryb \emph{rów.}\ oznacza wykonanie wieloprocesowe po~kategoriach usług
+(podrozdz.~\ref{sec:impl:wykonanie}).}
+\label{tab:wyniki:wszystkie}
+\begin{tabular}{l l l r r r r}
+\hline
+\textbf{Obszar} & \textbf{Wariant} & \textbf{Tryb}
+& \textbf{średnia} & \textbf{odch.\ st.} & \textbf{min} & \textbf{max} \\
+\hline
+Gd.\ Płd.\ & bazowy           & sekw.\ & $0{,}03208$ & $0{,}00095$ & $0{,}03073$ & $0{,}03896$ \\
+Gd.\ Płd.\ & bazowy           & rów.\  & $0{,}01288$ & $0{,}00120$ & $0{,}01074$ & $0{,}01599$ \\
+Gd.\ Płd.\ & ogr.\ $t$        & sekw.\ & $0{,}02944$ & $0{,}00113$ & $0{,}02782$ & $0{,}03777$ \\
+Gd.\ Płd.\ & ogr.\ $t$        & rów.\  & $0{,}01264$ & $0{,}00116$ & $0{,}00987$ & $0{,}01521$ \\
+Gd.\ Płd.\ & kubełkowy        & sekw.\ & $0{,}02947$ & $0{,}00076$ & $0{,}02814$ & $0{,}03195$ \\
+Gd.\ Płd.\ & kubełkowy        & rów.\  & $0{,}01266$ & $0{,}00103$ & $0{,}01055$ & $0{,}01528$ \\
+\hline
+Gdańsk     & bazowy           & sekw.\ & $0{,}25774$ & $0{,}01078$ & $0{,}22244$ & $0{,}33845$ \\
+Gdańsk     & bazowy           & rów.\  & $0{,}12886$ & $0{,}00469$ & $0{,}11926$ & $0{,}14447$ \\
+Gdańsk     & ogr.\ $t$        & sekw.\ & $0{,}23582$ & $0{,}00312$ & $0{,}23066$ & $0{,}24602$ \\
+Gdańsk     & ogr.\ $t$        & rów.\  & $0{,}11894$ & $0{,}00540$ & $0{,}11011$ & $0{,}14435$ \\
+Gdańsk     & kubełkowy        & sekw.\ & $0{,}21285$ & $0{,}00725$ & $0{,}20231$ & $0{,}27138$ \\
+Gdańsk     & kubełkowy        & rów.\  & $0{,}07603$ & $0{,}00349$ & $0{,}07217$ & $0{,}09545$ \\
+\hline
+Londyn     & bazowy           & sekw.\ & $3{,}45087$ & $0{,}03503$ & $3{,}41964$ & $3{,}59322$ \\
+Londyn     & bazowy           & rów.\  & $1{,}79633$ & $0{,}07112$ & $1{,}73581$ & $2{,}25290$ \\
+Londyn     & ogr.\ $t$        & sekw.\ & $3{,}29730$ & $0{,}03461$ & $3{,}25583$ & $3{,}41621$ \\
+Londyn     & ogr.\ $t$        & rów.\  & $1{,}73680$ & $0{,}06804$ & $1{,}67651$ & $2{,}27200$ \\
+Londyn     & kubełkowy        & sekw.\ & $2{,}59778$ & $0{,}03815$ & $2{,}54717$ & $2{,}81358$ \\
+Londyn     & kubełkowy        & rów.\  & $1{,}03228$ & $0{,}05112$ & $0{,}92697$ & $1{,}30876$ \\
+\hline
+\end{tabular}
+\end{table}
+
+Już z~samych wartości średnich widać dwie ogólne tendencje. Po~pierwsze,
+czas wykonania rośnie z~rozmiarem grafu o~dwa rzędy wielkości pomiędzy
+Gdańskiem Południe a~Londynem, co odpowiada wzrostowi $|V|$ o~rząd $\sim 44$
+oraz $|E|$ o~rząd $\sim 30$ (tab.~\ref{tab:grafy_po}); skala wzrostu jest
+zgodna z~oczekiwaniami wynikającymi z~liniowo--logarytmicznej złożoności
+algorytmu Dijkstry. Po~drugie, względne uporządkowanie wariantów nie jest
+stałe; na~małym grafie różnice między wariantami są w~granicach szumu
+pomiarowego, podczas gdy na~Gdańsku i~Londynie wariant kubełkowy odrywa
+się od~pozostałych, szczególnie w~trybie wieloprocesowym. Szczegółowa
+interpretacja tych obserwacji jest przedmiotem kolejnych podrozdziałów.
+
+\clearpage
+
+\section{Wpływ ograniczenia progiem $t$ (P1)}
+\label{sec:wyniki:p1}
+
+Tabela~\ref{tab:wyniki:p1} zestawia czasy wariantu bazowego (klasyczny algorytm
+Dijkstry bez ograniczenia progiem) z~wariantem ograniczonym progiem~$t$,
+obliczone w~trybie sekwencyjnym. Iloraz $T_{\text{bazowy}}/T_{\text{ogr.}}$
+mierzy przyspieszenie uzyskane wyłącznie przez wprowadzenie progu, przy
+identycznej reprezentacji grafu i~identycznej kolejce priorytetowej.
+
+\begin{table}[H]
+\centering
+\caption{Porównanie wariantu bazowego z~wariantem ograniczonym progiem~$t$
+(tryb sekwencyjny). $T$~oznacza średni czas pojedynczego uruchomienia
+w~sekundach.}
+\label{tab:wyniki:p1}
+\begin{tabular}{l r r r}
+\hline
+\textbf{Obszar} & $T_{\text{bazowy}}$ & $T_{\text{ogr.}\,t}$
+& \textbf{Przyspieszenie} \\
+\hline
+Gdańsk Południe & $0{,}03208$ & $0{,}02944$ & $1{,}09\times$ \\
+Gdańsk          & $0{,}25774$ & $0{,}23582$ & $1{,}09\times$ \\
+Londyn          & $3{,}45087$ & $3{,}29730$ & $1{,}05\times$ \\
+\hline
+\end{tabular}
+\end{table}
+
+Przyspieszenie z~tytułu samego ograniczenia progiem~$t$ okazuje się
+bardzo niewielkie: $5\%$ na~Londynie oraz $9\%$ na~obu obszarach Gdańska,
+przy czym wartości te mieszczą się w~rzędzie wielkości odchyleń
+standardowych z~tab.~\ref{tab:wyniki:wszystkie}. Jest to zgodne z~analizą
+z~podrozdz.~\ref{subsec:warianty:modified:zlozonosc}: w~problemie miasta
+15-minutowego, z~powodu redukcji wieloźródłowej (podrozdz.~\ref{sec:warianty:supersource}),
+izochrona kategorii może pokrywać dominującą część grafu, więc samo ograniczenie
+progiem odcina stosunkowo niewielką pracę.
+Tabela~\ref{tab:wyniki:pokrycie} obrazuje skalę zjawiska w~liczbach: pokazuje
+liczność $|C_k(t)|$ największej kategorii, liczność części wspólnej $|C(t)|$
+oraz odpowiadające im udziały w~całkowitej liczbie wierzchołków grafu
+(po~wstawieniu usług, tab.~\ref{tab:grafy_po}).
+
+\begin{table}[H]
+\centering
+\caption{Pokrycie grafu izochronami w~problemie miasta 15-minutowego.
+$|C_{\max}|$ oznacza liczność największego zbioru $C_k(t)$ wśród ośmiu
+kategorii NEXI. Procenty liczone względem $|V|$ po~wstawieniu usług
+(tab.~\ref{tab:grafy_po}).}
+\label{tab:wyniki:pokrycie}
+\begin{tabular}{l r r r r r}
+\hline
+\textbf{Obszar} & $|V|$ & $|C_{\max}|$ & $|C_{\max}|/|V|$
+& $|C(t)|$ & $|C(t)|/|V|$ \\
+\hline
+Gdańsk Południe & $6\,106$   & $6\,069$   & $99{,}4\%$ & $3\,104$   & $50{,}8\%$ \\
+Gdańsk          & $32\,004$  & $30\,323$  & $94{,}7\%$ & $21\,694$  & $67{,}8\%$ \\
+Londyn          & $270\,454$ & $265\,859$ & $98{,}3\%$ & $208\,610$ & $77{,}1\%$ \\
+\hline
+\end{tabular}
+\end{table}
+
+\clearpage
+
+Dla typowych liczności $|S_k|$
+spotykanych w~zaludnionym mieście (tab.~\ref{tab:uslugi_kategorie}) próg~$t=15$
+minut marszu od~\emph{najbliższej} usługi kategorii jest spełniony niemal
+wszędzie. Ograniczenie progiem odcina więc tylko nieliczne wierzchołki na~obrzeżach
+i~w~niepołączonych spójnych składowych grafu, co tłumaczy obserwowane
+przyspieszenie rzędu kilku procent.
+
+\section{Wpływ kolejki kubełkowej (P2)}
+\label{sec:wyniki:p2}
+
+Tabela~\ref{tab:wyniki:p2} zestawia czasy wariantu ograniczonego progiem
+z~wariantem kubełkowym. Iloraz $T_{\text{ogr.}}/T_{\text{kubełkowy}}$ mierzy
+przyspieszenie wynikające wyłącznie z~zamiany kopca binarnego na~tablicę
+kubełków FIFO (oba warianty stosują to samo ograniczenie progiem~$t$
+i~tę samą reprezentację grafu).
+
+\begin{table}[H]
+\centering
+\caption{Porównanie wariantu ograniczonego progiem z~wariantem kubełkowym
+(tryb sekwencyjny). Ostatnia kolumna podaje przyspieszenie wynikające
+z~zastąpienia kopca binarnego kolejką kubełkową.}
+\label{tab:wyniki:p2}
+\begin{tabular}{l r r r}
+\hline
+\textbf{Obszar} & $T_{\text{ogr.}\,t}$ & $T_{\text{kubełkowy}}$
+& \textbf{Przyspieszenie} \\
+\hline
+Gdańsk Południe & $0{,}02944$ & $0{,}02947$ & $1{,}00\times$ \\
+Gdańsk          & $0{,}23582$ & $0{,}21285$ & $1{,}11\times$ \\
+Londyn          & $3{,}29730$ & $2{,}59778$ & $1{,}27\times$ \\
+\hline
+\end{tabular}
+\end{table}
+
+W~odróżnieniu od~P1 przyspieszenie kubełkowe wyraźnie zależy od~skali
+zadania. Na~Gdańsku Południe oba warianty osiągają praktycznie identyczny
+czas wykonania ($1{,}00\times$); na~Gdańsku zysk wynosi $11\%$, a~na~Londynie
+$27\%$.
+
+Obserwowany wzorzec jest zgodny z~analizą z~podrozdz.~\ref{subsec:warianty:bucket:zlozonosc}.
+W~kopcu binarnym koszt operacji wstawienia i~ekstrakcji rośnie jak~$\log|V'|$,
+gdzie~$|V'|$ to~liczba elementów aktualnie w~kolejce; w~tablicy kubełków
+analogiczne operacje mają amortyzowany koszt stały, niezależny od~$|V'|$.
+Dla małych grafów (Gdańsk Południe, $|V'|\approx 3\,000$ wierzchołków
+w~izochronie) rzeczywista różnica między $\log_2|V'|\approx 11$ a~stałym
+kosztem jest niewielka i~zostaje zrównoważona przez wyższe koszty stałe
+operacji w~tablicy kubełków. Dla większych grafów ($|V'|\approx 30\,000$
+na~Gdańsku, $|V'|\approx 270\,000$ na~Londynie) różnica $\log_2|V'|$
+między $\sim 15$ a~$\sim 18$, po~pomnożeniu przez liczbę operacji rzędu~$|E'|$,
+przekłada się na~mierzalne przyspieszenie wykonania, zgodnie z~oczekiwaną
+zależnością logarytmiczną. Jak pokażą wyniki w~podrozdz.~\ref{sec:wyniki:p3},
+różnica wariantów ujawnia się jeszcze wyraźniej w~trybie wieloprocesowym.
+
+\clearpage
+
+\section{Wpływ zrównoleglenia obliczeń (P3)}
+\label{sec:wyniki:p3}
+
+Tabela~\ref{tab:wyniki:p3} zestawia przyspieszenia uzyskane przez tryb
+wieloprocesowy względem trybu sekwencyjnego, osobno dla każdego z~trzech
+wariantów algorytmu. Przyspieszenie liczone jest jako iloraz
+$S=T_{\text{sekw.}}/T_{\text{rów.}}$ średnich czasów wykonania.
+
+\begin{table}[H]
+\centering
+\caption{Przyspieszenie trybu wieloprocesowego względem sekwencyjnego.
+$T_{\text{sekw.}}$ i~$T_{\text{rów.}}$: średnie czasy pojedynczego
+uruchomienia w~obu trybach (w~sekundach).}
+\label{tab:wyniki:p3}
+\begin{tabular}{l l r r r}
+\hline
+\textbf{Obszar} & \textbf{Wariant}
+& $T_{\text{sekw.}}$ & $T_{\text{rów.}}$ & $S$ \\
+\hline
+Gdańsk Południe & bazowy     & $0{,}03208$ & $0{,}01288$ & $2{,}49\times$ \\
+Gdańsk Południe & ogr.\ $t$  & $0{,}02944$ & $0{,}01264$ & $2{,}33\times$ \\
+Gdańsk Południe & kubełkowy  & $0{,}02947$ & $0{,}01266$ & $2{,}33\times$ \\
+\hline
+Gdańsk          & bazowy     & $0{,}25774$ & $0{,}12886$ & $2{,}00\times$ \\
+Gdańsk          & ogr.\ $t$  & $0{,}23582$ & $0{,}11894$ & $1{,}98\times$ \\
+Gdańsk          & kubełkowy  & $0{,}21285$ & $0{,}07603$ & $2{,}80\times$ \\
+\hline
+Londyn          & bazowy     & $3{,}45087$ & $1{,}79633$ & $1{,}92\times$ \\
+Londyn          & ogr.\ $t$  & $3{,}29730$ & $1{,}73680$ & $1{,}90\times$ \\
+Londyn          & kubełkowy  & $2{,}59778$ & $1{,}03228$ & $2{,}52\times$ \\
+\hline
+\end{tabular}
+\end{table}
+
+Mimo że obliczenia zostały rozdzielone na~$K=8$ równoległych procesów
+(po~jednym na~kategorię usług), obserwowane przyspieszenie nie przekracza
+$2{,}80\times$. Dwa czynniki to wyjaśniają:
+
+\begin{itemize}
+  \item \textbf{niezbilansowane obciążenie kategorii.}
+        Liczność $|S_k|$ usług różni się między kategoriami nawet o~rząd
+        wielkości (tab.~\ref{tab:uslugi_kategorie}); kategorie najliczniejsze
+        (\emph{sustenance}, \emph{shops}) wymagają większej liczby relaksacji
+        krawędzi niż kategorie najmniej liczne (\emph{entertainment}, \emph{parks}).
+        Całkowity czas wieloprocesowego uruchomienia jest zdominowany przez
+        kategorię najwolniejszą, podczas gdy szybsze procesy zaczynają
+        wcześniej oczekiwać bezczynnie,
+
+  \item \textbf{hybrydowa architektura procesora.}
+        Procesor użyty w~eksperymentach (Intel Core~i7-1255U,
+        tab.~\ref{tab:impl:srodowisko}) łączy dwa rdzenie wydajne
+        z~ośmioma rdzeniami energooszczędnymi. Przy ośmiu pracujących
+        procesach większość zadań ląduje na~rdzeniach energooszczędnych,
+        których wydajność na~wątek jest niższa od~rdzeni wydajnych,
+        i~one też wyznaczają czas najwolniejszego procesu.
+\end{itemize}
+
+\clearpage
+
+\paragraph{Lepsza skalowalność wariantu kubełkowego w~trybie równoległym.}
+Najbardziej uderzającą obserwacją z~tab.~\ref{tab:wyniki:p3} jest fakt,
+że wariant kubełkowy skaluje się równolegle wyraźnie lepiej niż oba warianty
+z~kopcem binarnym, i~to nie w~granicach szumu pomiarowego. Dla Gdańska
+osiąga on $S=2{,}80\times$ wobec $S\approx 2{,}00\times$ dla wariantów z~kopcem;
+dla Londynu odpowiednio $2{,}52\times$ wobec $\approx 1{,}91\times$.
+W~efekcie różnica wariantów, niewielka w~trybie sekwencyjnym
+(podrozdz.~\ref{sec:wyniki:p2}), wzrasta w~trybie wieloprocesowym: na~Gdańsku
+wariant kubełkowy jest o~$36\%$ szybszy od~wariantu ograniczonego progiem
+($0{,}076$ vs.\ $0{,}119$~s), a~na~Londynie o~$41\%$ ($1{,}03$ vs.\ $1{,}74$~s).
+
+Kubełkowa struktura kolejki priorytetowej najsilniej skraca czas na~najliczniejszych
+kategoriach (tych z~największymi $|E'|$, gdzie czynnik logarytmiczny kopca
+binarnego daje największy efekt), a~to właśnie kategoria najwolniejsza
+decyduje o~czasie sumarycznym puli wieloprocesowej. Przyspieszenie tej
+jednej kategorii redukuje więc czas zarówno sekwencyjny, jak i~równoległy,
+ale w~wariancie równoległym efekt jest proporcjonalnie większy, gdyż
+pozostałe (szybsze) kategorie i~tak nie wydłużają czasu wykonania.
+
+\section{Łączny efekt modyfikacji}
+\label{sec:wyniki:laczne}
+
+Tabela~\ref{tab:wyniki:czasy_najlepsze} zestawia łączny efekt obu
+omówionych kierunków optymalizacji, biorąc jako linię odniesienia wariant
+bazowy w~trybie sekwencyjnym (klasyczny algorytm Dijkstry, bez ograniczenia
+progiem, jednoprocesowy) i~zestawiając go z~kombinacją wariantu kubełkowego
+oraz zrównoleglenia po~kategoriach.
+
+\begin{table}[H]
+\centering
+\caption{Łączne przyspieszenie najlepszej kombinacji (wariant kubełkowy,
+tryb wieloprocesowy) względem wariantu bazowego w~trybie sekwencyjnym.}
+\label{tab:wyniki:czasy_najlepsze}
+\begin{tabular}{l r r r}
+\hline
+\textbf{Obszar} & $T_{\text{baz.\ sekw.}}$ & $T_{\text{kub.\ rów.}}$
+& \textbf{Przyspieszenie} \\
+\hline
+Gdańsk Południe & $0{,}03208$ & $0{,}01266$ & $2{,}53\times$ \\
+Gdańsk          & $0{,}25774$ & $0{,}07603$ & $3{,}39\times$ \\
+Londyn          & $3{,}45087$ & $1{,}03228$ & $3{,}34\times$ \\
+\hline
+\end{tabular}
+\end{table}
+
+Na~Gdańsku Południe łączne przyspieszenie wynika praktycznie wyłącznie
+ze~zrównoleglenia: zysk algorytmiczny dla tak małego grafu jest niemierzalny.
+Na~Gdańsku i~Londynie wariant kubełkowy w~trybie wieloprocesowym osiąga
+łączne przyspieszenie powyżej $3{,}3\times$ względem wariantu bazowego
+sekwencyjnego, przy czym oba czynniki, algorytmiczny i~równoległościowy,
+wnoszą wkład.
+
+Dla Londynu przyspieszenie $3{,}34\times$ rozkłada się na~$1{,}33\times$
+z~tytułu zamiany wariantu bazowego na~kubełkowy w~trybie sekwencyjnym
+($3{,}45087/2{,}59778$, tab.~\ref{tab:wyniki:wszystkie}) oraz $2{,}52\times$
+z~tytułu zrównoleglenia wariantu kubełkowego (tab.~\ref{tab:wyniki:p3},
+ostatni wiersz); iloczyn $1{,}33\cdot 2{,}52\approx 3{,}35$.
+
+\clearpage
+
+Analogicznie dla Gdańska przyspieszenie $3{,}39\times$ to~$1{,}21\times$
+z~tytułu wariantu algorytmicznego ($0{,}25774/0{,}21285$) i~$2{,}80\times$
+ze~zrównoleglenia; iloczyn $1{,}21\cdot 2{,}80\approx 3{,}39$. Warto zwrócić
+uwagę, że łączne przyspieszenie dla Gdańska jest minimalnie wyższe niż dla
+Londynu, co odzwierciedla wyraźniejszy zysk równoległościowy wariantu
+kubełkowego na~tym obszarze ($2{,}80\times$ vs.\ $2{,}52\times$ na~Londynie).
+
+Z~praktycznego punktu widzenia oznacza to, że obie ścieżki optymalizacji
+są jednocześnie korzystne dla miast średniej wielkości oraz metropolii,
+i~ich łączny efekt redukuje czas pojedynczej analizy $15$-minutowej
+z~$0{,}258$~s do~$0{,}076$~s w~przypadku Gdańska oraz z~$3{,}45$~s do~$1{,}03$~s
+w~przypadku Londynu, przy identycznych zbiorach wynikowych. Podsumowanie
+przedstawionych w~niniejszym rozdziale obserwacji oraz odpowiedzi
+na~pytania badawcze \textbf{P1}--\textbf{P3} zostały zebrane
+w~rozdz.~\ref{chap:podsumowanie}.

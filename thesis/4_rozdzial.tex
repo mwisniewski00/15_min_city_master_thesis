@@ -1,2 +1,281 @@
 \mychapter{Implementacja i środowisko eksperymentalne}
 \label{chap:implementacja}
+
+W~rozdziale~\ref{chap:warianty-dijkstry} omówiono trzy warianty algorytmu Dijkstry
+rozważane w~tej pracy. Wyniki porównania (rozdz.~\ref{chap:wyniki}) mają odzwierciedlać
+różnice między samymi algorytmami, a~nie między implementacjami, dlatego wszystkie warianty
+powstały w~obrębie jednej infrastruktury kodu. Poniżej zestawiono główne decyzje
+implementacyjne oraz opisano środowisko pomiarów.
+
+\section{Język i wykorzystane biblioteki}
+\label{sec:impl:jezyk}
+
+Implementację napisano w~całości w~języku Python. Wybór ten jest świadomym kompromisem:
+Python nie jest językiem najwyższej wydajności w~znaczeniu absolutnym, ale przeważyły
+trzy względy praktyczne. Po~pierwsze, ekosystem geoprzestrzenny i~grafowy Pythona
+(OSMnx, NetworkX, Shapely, GeoPandas) jest wyjątkowo dojrzały i~stanowi dziś
+standard w~analizach miejskich opartych na~OpenStreetMap; przeniesienie tego
+samego rozwiązania przygotowania danych do~innego języka wymagałoby pisania znacznej części
+narzędzi od~podstaw. Po~drugie, celem pracy jest porównanie wariantów tego samego
+algorytmu między sobą, a~nie ustalanie ich bezwzględnej wydajności względem
+innojęzykowych implementacji referencyjnych. Po~trzecie, Python wspiera wieloprocesowość w~standardowej
+bibliotece, co~pozwoliło zrealizować zrównoleglenie obliczeń bez dodatkowych zależności.
+
+\clearpage
+
+Zestaw bibliotek pozostaje niewielki:
+\begin{itemize}
+  \item \textbf{OSMnx}~\cite{boeing2017osmnx}: pobieranie sieci pieszych
+        i~punktów serwisów (\emph{Points of Interest}, PoI) z~OpenStreetMap, filtrowanie
+        oraz konsolidacja skrzyżowań (rozdz.~\ref{sec:dane:graf}).
+        Wybrano OSMnx ze~względu na~natywne wsparcie dla pieszego typu sieci
+        oraz integrację z~biblioteką NetworkX,
+        co~istotnie skraca etap przygotowania danych;
+  \item \textbf{NetworkX}: ogólna biblioteka grafowa;
+  służy do~reprezentacji grafu odczytanego przez OSMnx
+  oraz do~zapisu w~formacie GraphML. Wewnątrz właściwych przeszukiwań
+  graf jest jednak przepisywany do~prostszej reprezentacji tablicowej
+  (podrozdz.~\ref{sec:impl:reprezentacja}), ponieważ słownikowa struktura
+  NetworkX utrudnia szybki, powtarzalny dostęp do~sąsiadów
+        i~wag krawędzi;
+  \item \textbf{Shapely} oraz \textbf{GeoPandas}: operacje geometryczne
+        niezbędne do~wstawiania punktów serwisów do~grafu pieszego
+        (rozdz.~\ref{sec:dane:wstawianie});
+  \item moduły standardowe Pythona: \texttt{heapq} jako kopiec binarny
+        w~wariancie bazowym i~ograniczonym progiem, \texttt{collections.deque}
+        jako kubełki FIFO w~wariancie kubełkowym, \texttt{concurrent.futures}
+        i~\texttt{multiprocessing} do~zrównoleglenia obliczeń.
+\end{itemize}
+
+W~implementacji wariantów algorytmu Dijkstry nie korzystano ze~standardowych
+funkcji najkrótszych ścieżek dostępnych w~NetworkX. Wariant z~kolejką kubełkową
+oraz wariant ograniczony progiem nie są tam bowiem udostępniane jako odrębne
+procedury, więc i~tak konieczna byłaby własna implementacja dla co~najmniej
+dwóch wariantów. Gdyby dodatkowo użyć gotowej funkcji NetworkX wyłącznie dla
+wariantu bazowego, porównanie przestałoby być symetryczne: implementacja
+referencyjna NetworkX operuje na~słownikowej reprezentacji grafu, innej niż ta
+przyjęta w~pracy, więc wyniki nie odzwierciedlałyby już samych różnic między strategiami.
+Dlatego zdecydowano się napisać trzy warianty samodzielnie, nad~wspólną reprezentacją
+grafu opisaną w~kolejnym podrozdziale.
+
+\section{Wspólna reprezentacja grafu}
+\label{sec:impl:reprezentacja}
+
+Wszystkie trzy warianty algorytmu Dijkstry operują na~tej samej reprezentacji grafu,
+zbudowanej raz przed rozpoczęciem właściwego pomiaru. Współdzielenie reprezentacji jest
+warunkiem rzetelnego porównania: gdyby każdy wariant korzystał z~innej struktury danych,
+mierzone czasy odzwierciedlałyby także różnice między strukturami danych,
+a~nie wyłącznie różnice w~samym algorytmie.
+
+\clearpage
+
+W~wewnętrznej pętli relaksacji algorytmu Dijkstry wielokrotnie wykonywaną operacją jest
+iteracja po~krawędziach wychodzących z~danego wierzchołka~$u$. Ten koszt
+w~dużej mierze determinuje praktyczną wydajność algorytmu. Wybór reprezentacji grafu sprowadza się
+więc głównie do~pytania, jak szybko można uzyskać listę sąsiadów wierzchołka, przy
+jednocześnie akceptowalnym koszcie pamięci dla rozważanych rozmiarów grafu (do~około
+$270$~tys.\ wierzchołków i~$385$~tys.\ krawędzi w~przypadku Londynu;
+tab.~\ref{tab:grafy_po}).
+
+\subsection{Porównanie reprezentacji grafu}
+\label{subsec:impl:reprezentacja:porownanie}
+
+Poniżej omówiono pięć najczęściej spotykanych reprezentacji grafu pod kątem ich przydatności
+do~problemu miasta $15$-minutowego. Dla każdej z~nich podano złożoność pamięciową, koszt
+iteracji po~sąsiadach pojedynczego wierzchołka oraz typowy obszar zastosowań.
+
+\paragraph{Lista krawędzi.}
+Najprostsza możliwa reprezentacja: graf zapamiętywany jest jako sekwencja trójek $(u,v,w)$,
+po~jednej na~każdą krawędź. Pamięć $\Theta(|E|)$. Wyznaczenie sąsiadów wierzchołka~$u$
+wymaga jednak przeszukania całej listy, więc koszt iteracji po~sąsiadach wynosi
+$\Theta(|E|)$ niezależnie od~rzeczywistego stopnia wierzchołka. Reprezentacja ta jest
+naturalna dla algorytmów, które i~tak przeglądają wszystkie krawędzie w~każdej iteracji
+(np.\ algorytm Bellmana-Forda).
+W~algorytmie Dijkstry każda ekstrakcja z~kolejki priorytetowej wymagałaby pełnego przeglądu
+listy krawędzi, co~prowadziłoby do~złożoności gorszej niż klasyczna granica
+$O((|V|+|E|)\log|V|)$.
+
+\paragraph{Macierz sąsiedztwa.}
+Graf przechowywany jest jako kwadratowa macierz $A$ o~wymiarach $|V|\times|V|$,
+w~której $A[u][v]$ to~waga krawędzi $(u,v)$ (lub wartość specjalna oznaczająca jej brak).
+Pamięć $\Theta(|V|^2)$, niezależnie od~liczby krawędzi. Iteracja po~sąsiadach $u$ wymaga
+przejścia całego wiersza $A[u]$, czyli kosztu $\Theta(|V|)$, nawet jeśli wierzchołek ma
+faktycznie tylko kilku sąsiadów. Macierz sąsiedztwa jest preferowana dla grafów gęstych
+($|E|=\Theta(|V|^2)$) oraz dla algorytmów typu Floyda-Warshalla, w~których koszt $|V|^2$
+i~tak jest dolnym ograniczeniem. Dla rozważanych w~pracy grafów pieszych macierz sąsiedztwa
+nie jest jednak praktyczna: ich rzadkość ($|E|=O(|V|)$, $|V|^2$ rzędu $7\cdot 10^{10}$
+dla Londynu) oznacza, że~zarówno pamięć, jak i~koszt iteracji po~sąsiadach byłyby
+nieproporcjonalnie wysokie względem rzeczywistego rozmiaru zadania.
+
+\clearpage
+
+\paragraph{Macierz incydencji.}
+Graf zapamiętywany jest jako macierz $|V|\times|E|$, w~której kolumna odpowiadająca
+krawędzi $e=(u,v)$ zawiera niezerowe wpisy w~wierszach $u$ i~$v$, a~zera w~pozostałych
+wierszach. Pamięć $\Theta(|V|\cdot|E|)$, czyli o~rząd $|V|$ wyższa niż w~liście krawędzi
+przy tej samej informacji o~grafie. Iteracja po~sąsiadach wierzchołka $u$ wymaga
+przeszukania całego wiersza i~zidentyfikowania kolumn z~niezerowymi wpisami, więc koszt
+wynosi $\Theta(|E|)$. Macierz incydencji znajduje zastosowanie w~teorii spektralnej grafów
+i~w~niektórych algorytmach przepływowych; dla algorytmu Dijkstry
+nie wnosi nic, czego nie dałoby się uzyskać prostszą listą krawędzi przy znacznie
+mniejszym koszcie pamięci.
+
+\paragraph{Lista sąsiedztwa.}
+Dla każdego wierzchołka $u$ przechowywana jest lista par $(v,w)$ odpowiadających krawędziom
+wychodzącym z~$u$. Pamięć $\Theta(|V|+|E|)$, czyli liniowa względem rozmiaru grafu.
+Iteracja po~sąsiadach $u$ jest operacją $\Theta(\deg(u))$, proporcjonalną do~rzeczywistego
+stopnia wierzchołka, a~nie do~globalnego rozmiaru grafu. W~pętli relaksacji Dijkstry
+prowadzi to~do~klasycznego oszacowania $O((|V|+|E|)\log|V|)$.
+Lista sąsiedztwa nie wspiera natomiast szybkiego
+sprawdzenia, czy konkretna krawędź $(u,v)$ istnieje (koszt $O(\deg(u))$); w~algorytmie
+Dijkstry takie pytanie się jednak nie pojawia.
+
+\paragraph{Compressed Sparse Row (CSR).}
+Wariant kompaktowy listy sąsiedztwa, w~którym wszystkie listy sąsiadów łączy się
+w~pojedynczą, ciągłą tablicę \texttt{targets} z~dodatkową tablicą \texttt{offsets} podającą,
+gdzie w~tej tablicy zaczyna się i~kończy fragment przypisany do~każdego wierzchołka. Zużycie
+pamięci pozostaje $\Theta(|V|+|E|)$, jak w~liście sąsiedztwa, lecz sąsiedzi danego
+wierzchołka zajmują ciągły fragment tablicy, więc odczyt jest w~praktyce sekwencyjny.
+W~językach kompilowanych
+do~natywnego kodu maszynowego (C, C++, Rust) format CSR często skraca czas obliczeń
+w~stosunku do~prostszych reprezentacji przy tej samej asymptotyce i~jest standardem
+w~wysoko zoptymalizowanych implementacjach SSSP. W~Pythonie ta przewaga zwykle znika: koszt pojedynczej
+iteracji pętli relaksacji to~przede wszystkim interpretacja kodu, a~nie dostęp do~pamięci;
+ponadto elementy pozornie ciągłej tablicy są i~tak osobnymi obiektami w~maszynie wirtualnej.
+
+\begin{table}[ht]
+\centering
+\caption{Porównanie najczęściej spotykanych reprezentacji grafu. Kolumna \emph{Iteracja po~sąsiadach $u$} podaje koszt jednorazowego przejścia
+po~wszystkich krawędziach wychodzących z~wierzchołka}
+\label{tab:impl:reprezentacje_grafu}
+\begin{tabular}{l l l l}
+\hline
+\textbf{Reprezentacja} & \textbf{Pamięć} & \textbf{Iteracja po~sąsiadach $u$} \\
+\hline
+Lista krawędzi      & $\Theta(|E|)$            & $\Theta(|E|)$       \\
+Macierz sąsiedztwa  & $\Theta(|V|^2)$          & $\Theta(|V|)$       \\
+Macierz incydencji  & $\Theta(|V|\cdot|E|)$    & $\Theta(|E|)$       \\
+Lista sąsiedztwa    & $\Theta(|V|+|E|)$        & $\Theta(\deg(u))$   \\
+CSR                 & $\Theta(|V|+|E|)$        & $\Theta(\deg(u))$   \\
+\hline
+\end{tabular}
+\end{table}
+
+\paragraph{Wybór reprezentacji.}
+Trzy pierwsze reprezentacje (lista krawędzi, macierz sąsiedztwa, macierz incydencji)
+zostają odrzucone z~powodu zbyt wysokiego kosztu iteracji po~sąsiadach.
+Do~porównania pozostają więc lista sąsiedztwa i~format CSR, o~równoważnej charakterystyce
+asymptotycznej. W~Pythonie ewentualna korzyść z~bardziej zwartego zapisu sąsiadów w~CSR
+jest często mała, a~sam format wyraźnie
+komplikuje implementację (osobna tablica przesunięć, dodatkowy etap adresowania przy odczycie
+wagi krawędzi). Z~tych powodów w~pracy przyjęto listę sąsiedztwa jako wspólną reprezentację grafu
+dla wszystkich trzech wariantów algorytmu Dijkstry.
+
+\subsection{Przyjęta reprezentacja}
+\label{subsec:impl:reprezentacja:przyjeta}
+
+Wybrana lista sąsiedztwa nie jest bezpośrednim odwzorowaniem grafu wczytanego przez OSMnx.
+Względem niego wprowadzono trzy decyzje projektowe, których celem jest obniżenie kosztu
+stałego pojedynczego obrotu pętli relaksacji oraz uniknięcie kosztownych modyfikacji grafu
+wejściowego pomiędzy kategoriami usług:
+
+\begin{itemize}
+  \item \textbf{indeksy liczbowe} ($0,\dots,n-1$) zamiast identyfikatorów węzłów OSM.
+        Dostęp do~tablicy po~indeksie jest w~praktyce wyraźnie szybszy niż wyszukiwanie
+        w~słowniku po~kluczu, mimo że~oczekiwana złożoność to~w~obu przypadkach $O(1)$.
+        Tablica wymaga jedynie wyliczenia adresu komórki na~podstawie indeksu;
+        słownik dodatkowo musi obliczyć wartość funkcji haszującej, zlokalizować właściwą
+        komórkę i~porównać klucze. Pętla relaksacji odwołuje się do~tablicy odległości
+        dla każdej krawędzi grafu, więc na~grafach o~setkach tysięcy wierzchołków różnica
+        ta staje się zauważalna;
+  \item \textbf{redukcja wielokrotnych krawędzi równoległych} między tą samą parą wierzchołków
+        do pojedynczej krawędzi o~najmniejszej wadze, wykonywana jednorazowo w~trakcie budowy
+        reprezentacji, zamiast w~każdej iteracji pętli relaksacji. Pętla nie musi wówczas
+        wybierać minimum spośród kilku takich krawędzi;
+  \item \textbf{superźródło jako pole tablicy sąsiedztwa} (podrozdz.~\ref{sec:warianty:supersource})
+        na~indeksie~$n$, zamiast jako dodatkowa krawędź w~grafie wejściowym.
+        Umożliwia obsługę wielu kategorii usług bez wstawiania
+        i~usuwania wirtualnego wierzchołka między uruchomieniami; ma to znaczenie
+        także przy wariancie równoległym, gdy kilka procesów dzieli ten sam graf.
+\end{itemize}
+
+Koszt zbudowania tej reprezentacji nie jest wliczany w~mierzony czas wykonania algorytmu,
+ponieważ jest on ponoszony jednokrotnie (przed pętlą pomiarową), niezależnie od~liczby
+powtórzeń pomiaru.
+
+\clearpage
+
+\section{Wariant sekwencyjny i wieloprocesowy}
+\label{sec:impl:wykonanie}
+
+Wszystkie trzy warianty mają ten sam interfejs wejścia i~wyjścia, więc na~poziomie
+uruchomienia można je podmieniać bez zmiany reszty kodu. Dostępne są dwa tryby:
+sekwencyjny i~wieloprocesowy. W~obu uruchamiana jest ta sama implementacja algorytmu;
+różni się jedynie sposób wywołań dla poszczególnych kategorii usług.
+
+W~trybie sekwencyjnym kategorie są przetwarzane jedna po~drugiej w~ustalonej, alfabetycznej
+kolejności. W~trybie wieloprocesowym zadanie po~każdej kategorii uruchamiane jest w~odrębnym
+procesie roboczym z~puli \texttt{ProcessPoolExecutor} biblioteki standardowej.
+Wybrano procesy, a~nie wątki, ze~względu na~mechanizm \emph{Global Interpreter Lock}
+referencyjnego interpretera CPython: wątki Pythona wykonują kod bajtowy sekwencyjnie,
+co~uniemożliwiłoby uzyskanie rzeczywistego przyspieszenia dla obciążenia opartego
+na~obliczeniach (jakim są tu pętle relaksacji krawędzi). Liczba procesów roboczych
+jest ograniczana do~liczby kategorii usług ($K=8$, tab.~\ref{tab:nexi_tags}).
+
+W~systemie Linux pula procesów otwierana jest z~metodą startu \texttt{fork}.
+Każdy proces roboczy dziedziczy wówczas przestrzeń adresową procesu rodzica zgodnie
+z~mechanizmem kopiowania przy zapisie (\emph{copy-on-write}), co~oznacza, że~dane
+reprezentacji grafu nie są serializowane ani kopiowane do~procesów roboczych.
+Wyklucza to dodatkowy koszt, który w~przeciwnym razie pojawiałby się przy każdym uruchomieniu
+puli i~rósłby wraz z~rozmiarem grafu. Pula procesów otwierana jest raz,
+na~początku pętli pomiarowej, i~zamykana po~jej zakończeniu; koszt startu procesów
+roboczych nie jest więc wliczany w~pojedynczy pomiar.
+
+\section{Środowisko sprzętowe i programowe}
+\label{sec:impl:srodowisko}
+
+Wszystkie eksperymenty zostały przeprowadzone na~laptopie
+o~specyfikacji przedstawionej w~tabeli~\ref{tab:impl:srodowisko}.
+
+\begin{table}[ht]
+\centering
+\caption{Specyfikacja środowiska eksperymentalnego.}
+\label{tab:impl:srodowisko}
+\begin{tabular}{l l}
+\hline
+\textbf{Element} & \textbf{Wartość} \\
+\hline
+Komputer       & Dell Inspiron 16 5620 \\
+Procesor       & Intel Core i7-1255U (10 rdzeni / 12 wątków), do $4{,}7$~GHz \\
+Pamięć RAM     & 16~GB \\
+System         & Ubuntu 24.04 LTS (Linux 6.8) \\
+Python         & 3.12 \\
+\hline
+\end{tabular}
+\end{table}
+
+\clearpage
+
+\section{Metodyka pomiaru i walidacja poprawności}
+\label{sec:impl:metodyka}
+
+Do~pomiaru czasu wykorzystywany jest
+\texttt{time.perf\_counter()} z~biblioteki standardowej Pythona, przeznaczony
+do~mierzenia odcinków czasu. Pomiar obejmuje wyłącznie samo wykonanie algorytmu
+przeszukiwania: poza nim pozostaje wczytanie pliku z~grafem, zbudowanie osobnej
+reprezentacji grafu dla każdej kategorii usług
+oraz serializacja wyników do~pliku JSON. W~trybie wieloprocesowym poza pomiarem pozostaje
+również jednorazowy koszt startu i~zamknięcia puli procesów.
+
+Dla każdej kombinacji (graf, wariant algorytmu, tryb wykonania) pomiar powtarzany jest
+$100$ razy. Z~tej próby raportowane są: średnia, odchylenie standardowe, minimum
+i~maksimum czasu pojedynczej iteracji. Powtarzanie ogranicza wpływ losowych czynników
+i~pozwala ocenić rozrzut wyników w~serii pomiarów.
+
+Poprawność zweryfikowano przez porównanie pełnych, posortowanych list identyfikatorów
+wierzchołków z~$C(t)$ w~plikach wynikowych: między trzema wariantami algorytmu przy tej samej trójce
+(graf, próg~$t$, kategorie usług) oraz, osobno dla każdego wariantu, między trybem sekwencyjnym
+a~wieloprocesowym.
+
+Środowisko i~metodyka opisane powyżej stanowią podstawę eksperymentów porównawczych,
+których wyniki zestawiono w~rozdz.~\ref{chap:wyniki}.

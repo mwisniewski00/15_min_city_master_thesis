@@ -1,52 +1,55 @@
 \mychapter{Wprowadzenie}
 \label{chap:intro}
 
-\section{Miasto $t$ minut: kontekst i motywacja}
+\section{Miasto $t$-minutowe: kontekst i motywacja}
 \label{sec:intro:kontekst}
 
-Koncepcja \emph{miasta 15 minut} (częściej uogólniana jako \emph{miasto $t$ minut})
+Koncepcja \emph{miasta 15-minutowego} (częściej uogólniana jako \emph{miasto $t$-minutowe})
 opisuje wizję organizacji przestrzeni miejskiej, w której podstawowe potrzeby życia codziennego
---- takie jak zakupy, edukacja, opieka zdrowotna, usługi publiczne, rekreacja czy gastronomia ---
-mogą być zaspokojone w krótkim czasie podróży, zazwyczaj pieszo lub rowerem.
-Idea ta została spopularyzowana m.in.\ przez Moreno w 2016 roku \cite{Moreno2016QuartHeure}
-i od tego czasu stała się jednym z częściej dyskutowanych paradygmatów w urbanistyce,
+(zakupy, edukacja, opieka zdrowotna, usługi publiczne, rekreacja czy gastronomia)
+mogą być zaspokajane w krótkim czasie podróży, zazwyczaj pieszo lub rowerem.
+Ideę tę spopularyzował Moreno w 2016 roku \cite{Moreno2016QuartHeure} i od tego czasu
+stała się jednym z częściej dyskutowanych paradygmatów w urbanistyce,
 politykach miejskich oraz analizach dostępności.
 
-Z punktu widzenia praktyki planistycznej koncepcja miasta $t$ minut bywa sprowadzana do
-pytania, które ma bezpośrednią interpretację obliczeniową:
+W praktyce planistycznej koncepcja miasta $t$-minutowego bywa sprowadzana do pytania,
+które ma bezpośrednią interpretację obliczeniową:
 \begin{quote}
 \emph{Z jakich miejsc w mieście da się dotrzeć do zadanych kategorii usług w czasie
 nieprzekraczającym $t$ minut?}
 \end{quote}
-Odpowiedź na to pytanie jest istotna zarówno diagnostycznie (pomiar dostępności usług i jej nierówności),
-jak i operacyjnie (wskazanie miejsc, w których potrzebne są interwencje: dogęszczenie usług,
-zmiana organizacji ruchu, poprawa spójności sieci pieszej, likwidacja barier itp.).
+Odpowiedź na to pytanie jest istotna diagnostycznie (pomiar dostępności usług i jej nierówności)
+oraz operacyjnie, gdyż pozwala wskazać miejsca, w których potrzebne są interwencje:
+dogęszczenie usług, zmiana organizacji ruchu, poprawa spójności sieci pieszej, likwidacja barier itp.
 
-W literaturze spotyka się różne warianty problemu miasta $t$ minut.
-Różnią się one m.in.\ zestawem kategorii usług, sposobem modelowania czasu przemieszczania (pieszo/rowerem)
-oraz sposobem agregacji wyniku do postaci wskaźników porównawczych lub map tematycznych.
-Niezależnie jednak od wariantu, rdzeniem problemu pozostaje wyznaczanie zasięgów czasowych
-(\emph{izochron}) w grafie reprezentującym miasto.
+W literaturze spotyka się różne warianty problemu miasta $t$-minutowego.
+Różnią się one m.in.\ zestawem kategorii usług, sposobem modelowania czasu przemieszczania
+(pieszo lub rowerem) oraz sposobem agregacji wyniku do postaci wskaźników porównawczych
+bądź map tematycznych. Niezależnie od wariantu, rdzeniem problemu pozostaje wyznaczanie
+\emph{izochron} w grafie reprezentującym miasto, czyli (w konwencji przyjętej w pracach
+poświęconych analizom dostępności) zbiorów punktów osiągalnych z zadanego źródła w czasie
+nieprzekraczającym progu $t$.
 
 \clearpage
 
-Z perspektywy informatycznej miasto $t$ minut jest interesujące z co najmniej dwóch powodów.
-Po pierwsze, stanowi przykład zadania, w którym klasyczne problemy grafowe (głównie problem najkrótszej ścieżki) przekładają się bezpośrednio na interpretację społeczną i przestrzenną.
-Po drugie, praktyczne zastosowania wymagają obliczeń na dużych grafach miejskich oraz wykonywania
-wielu podobnych zapytań (dla wielu kategorii usług i wielu progów czasu),
-co rodzi pytania o efektywność algorytmów i implementacji.
+Z perspektywy informatycznej miasto $t$-minutowe jest interesujące co najmniej z dwóch powodów.
+Stanowi przykład zadania, w którym klasyczne problemy grafowe (głównie problem najkrótszej ścieżki)
+przekładają się bezpośrednio na interpretację społeczną i przestrzenną. Jednocześnie praktyczne
+zastosowania wymagają obliczeń na dużych grafach miejskich oraz wykonywania wielu podobnych
+zapytań (dla różnych kategorii usług i progów czasu), co rodzi pytania o efektywność algorytmów
+i implementacji.
 
 \section{Model obliczeniowy i formalizacja problemu}
 \label{sec:intro:formalizacja}
 
-W formalizacji algorytmicznej kluczowe jest rozróżnienie pomiędzy odległością euklidesową
-(„w linii prostej”) a odległością \emph{sieciową}, wynikającą z realnego przebiegu ulic, przejść
-i skrzyżowań. Naturalnym językiem opisu takiej sieci jest teoria grafów \cite{barbieri2023graph}.
-W niniejszej pracy miasto modelowane jest jako graf ważony
-$G=(V,E)$, gdzie wierzchołki $V$ odpowiadają punktom sieci (np.\ skrzyżowaniom, wejściom do przejść,
-węzłom ciągów pieszych), a krawędzie $E$ odpowiadają odcinkom możliwym do pokonania.
-Waga $w(e)$ krawędzi $e\in E$ jest interpretowana jako koszt przejścia, najczęściej czas w minutach,
-wyznaczany na podstawie długości odcinka oraz przyjętej prędkości przemieszczania się.
+W formalizacji algorytmicznej istotne jest rozróżnienie pomiędzy odległością euklidesową
+(„w linii prostej”) a odległością sieciową, wynikającą z realnego przebiegu ulic, przejść
+i skrzyżowań. Językiem opisu takiej sieci jest teoria grafów \cite{barbieri2023graph}.
+W niniejszej pracy miasto jest modelowane jako graf ważony $G=(V,E)$, w którym wierzchołki $V$
+odpowiadają skrzyżowaniom sieci pieszej, a krawędzie $E$ łączącym je odcinkom możliwym do
+pokonania pieszo. Waga $w(e)$ krawędzi $e\in E$ jest interpretowana jako koszt przejścia,
+najczęściej czas w minutach, wyznaczany na podstawie długości odcinka oraz przyjętej prędkości
+przemieszczania się.
 
 Niech $S_k\subseteq V$ oznacza zbiór lokalizacji usług danej kategorii $k$
 (np.\ aptek, sklepów spożywczych, szkół). Dla wierzchołka $v\in V$ definiujemy czas dostępu do kategorii $k$ jako
@@ -63,14 +66,14 @@ to definiujemy
 \[
 C(t)=\bigcap_{k=1}^{K} C_k(t),
 \]
-czyli zbiór wierzchołków, z których da się dotrzeć do \emph{każdej} wymaganej kategorii usług w czasie $\le t$.
+czyli zbiór wierzchołków, z których da się dotrzeć do każdej wymaganej kategorii usług w czasie $\le t$.
 
 \clearpage
 
-W literaturze spotyka się również interpretację, w której zamiast rozpatrywać tylko najbliższą usługę,
-analizuje się zasięgi czasowe wokół \emph{konkretnych lokalizacji} usług.
-To podejście jest szczególnie wygodne obliczeniowo w sytuacji, gdy liczba usług jest mniejsza
-niż liczba potencjalnych punktów startowych (np.\ adresów lub węzłów sieci) \cite{barbieri2023graph}.
+W literaturze spotyka się również interpretację, w której zamiast rozpatrywać najbliższą usługę,
+analizuje się zasięgi czasowe wokół konkretnych lokalizacji usług.
+Podejście to jest wygodne obliczeniowo w sytuacji, gdy liczba usług jest mniejsza
+niż liczba potencjalnych punktów startowych, np.\ adresów lub węzłów sieci \cite{barbieri2023graph}.
 Niech $C^k_s(t)$ oznacza zbiór wierzchołków, z których można dotrzeć do konkretnej usługi $s\in S_k$ w czasie $\le t$:
 \[
 C^k_s(t)=\{\,v\in V:\ d_G(v,s)\le t\,\}.
@@ -79,114 +82,133 @@ Wówczas mamy równoważność:
 \[
 C_k(t)=\bigcup_{s\in S_k} C^k_s(t),
 \]
-a więc wynik dla kategorii jest sumą zasięgów wokół jej lokalizacji.
-Takie odwrócenie perspektywy (start od usług zamiast od badanych wierzchołków) jest ważne praktycznie,
-ponieważ umożliwia budowanie zbioru $C(t)$ przez serię obliczeń izochron.
+zbiór $C_k(t)$ powstaje więc jako suma izochron wyznaczonych dla poszczególnych usług kategorii $k$.
+Odwrócenie perspektywy ma istotne znaczenie obliczeniowe: liczba usług $|S_k|$ jest w praktyce
+znacznie mniejsza niż liczba węzłów grafu $|V|$, dlatego wyznaczenie $C_k(t)$ jako sumy izochron
+liczonych od usług wymaga znacznie mniejszej liczby uruchomień algorytmu najkrótszych ścieżek niż
+obliczanie $\tau_k(v)$ niezależnie dla każdego wierzchołka $v\in V$.
 
-Wyniki analiz miasta $t$ minut bywają następnie agregowane do postaci wskaźników porównawczych
+Wyniki analiz miasta $t$-minutowego bywają następnie agregowane do postaci wskaźników porównawczych
 lub map tematycznych. Przykładem są podejścia oparte na grafie indukowanym przez wierzchołki $C(t)$
-i analizie jego własności (np.\ rozłącznych składowych jako „luk” w dostępności) \cite{barbieri2023graph},
-a także metody siatkowe (np.\ heksagonalna tessalacja) i indeksy typu NEXI,
-w których czasy dostępu są uśredniane w komórkach siatki \cite{olivari2023presenting}.
+i analizie jego własności, np.\ rozłącznych składowych traktowanych jako „luki” w dostępności
+\cite{barbieri2023graph}. Stosowane są również metody siatkowe (np.\ heksagonalna tesalacja)
+oraz indeksy typu NEXI, w których czasy dostępu są uśredniane w komórkach siatki
+\cite{olivari2023presenting}.
 
-\section{Wyzwania algorytmiczne w analizach miasta $t$ minut}
+\section{Wyzwania algorytmiczne w analizach miasta $t$-minutowego}
 \label{sec:intro:wyzwania}
 
-Choć definicje zbiorów $C_k(t)$ i $C(t)$ są proste, ich wyznaczanie na realnych danych miejskich
-wiąże się z istotnymi wyzwaniami obliczeniowymi.
+Definicje zbiorów $C_k(t)$ i $C(t)$ są stosunkowo proste, jednak ich wyznaczanie na realnych
+danych miejskich wiąże się z istotnymi wyzwaniami obliczeniowymi.
 
-\subsection{Lokalność izochron i poszukiwanie algorytmów „dopasowanych”}
+\subsection{Wybór algorytmu najkrótszych ścieżek}
+\label{sec:intro:wybor-algorytmu}
 
-W analizach miasta $t$ minut interesuje nas przede wszystkim informacja o osiągalności
-\emph{w zadanym progu czasu} $t$, a nie pełna tablica odległości do wszystkich wierzchołków.
-Dla typowych wartości $t$ (np.\ 10--20 minut marszu) izochrona obejmuje relatywnie niewielki fragment miasta.
-Ta własność \emph{lokalności} sugeruje, że algorytmy i implementacje powinny wykorzystywać fakt,
-iż większość grafu nie jest odwiedzana w trakcie obliczeń dla danego źródła.
+Wyznaczanie zbiorów $C_k(t)$ sprowadza się do wielokrotnego rozwiązywania problemu najkrótszych ścieżek
+z jednego źródła (\emph{single-source shortest paths}, SSSP) w grafie sieci pieszej.
+W literaturze algorytmicznej opisano wiele algorytmów rozwiązujących ten problem; różnią się one
+założeniami co do dopuszczalnych wag krawędzi oraz złożonością obliczeniową. Do najczęściej
+przywoływanych należą algorytm Dijkstry \cite{dijkstra} dla nieujemnych wag krawędzi
+oraz algorytm Bellmana-Forda \cite{bellman1958}, dopuszczający również wagi ujemne.
+Pełniejszy przegląd algorytmów najkrótszych ścieżek (m.in.\ Dijkstry, Bellmana-Forda,
+A* oraz Floyda-Warshalla) wraz z dyskusją ich przydatności do zadania miasta $t$-minutowego
+zostanie przeprowadzony w rozdziale~\ref{chap:sssp}.
 
-Klasycznym narzędziem do wyznaczania najkrótszych odległości w grafach z nieujemnymi wagami
-jest algorytm Dijkstry \cite{dijkstra}. W kontekście miasta $t$ minut często stosuje się jego warianty,
-w których przeszukiwanie jest ograniczane progiem czasu (tzw.\ \emph{$t$-bounded Dijkstra})
-oraz warianty, które minimalizują narzut pamięciowy poprzez wstawianie do kolejki priorytetowej
-tylko wierzchołków faktycznie odkrytych (podejście znane jako \emph{Uniform Cost Search})
-\cite{Lam2024}. W literaturze pojawiają się również triki wieloźródłowe,
-w których wiele lokalizacji usług w obrębie jednej kategorii jest obsługiwanych przez jedno uruchomienie
-algorytmu (np.\ przez dodanie superźródła połączonego krawędziami o koszcie $0$)
-\cite{Lam2024}.
+W literaturze poświęconej bezpośrednio problemowi miasta $t$-minutowego (m.in.\ \cite{Lam2024,barbieri2023graph,olivari2023presenting})
+spośród tych algorytmów stosowany jest praktycznie wyłącznie algorytm Dijkstry, ewentualnie wraz z drobnymi
+modyfikacjami inżynieryjnymi. Wynika to z prostej obserwacji: wagi krawędzi reprezentują czasy
+przejścia pieszo i są z definicji nieujemne. Algorytmy dopuszczające wagi ujemne (jak Bellman-Ford)
+byłyby w tym kontekście niepotrzebnie wolniejsze, przez co algorytm Dijkstry pełni rolę
+oczywistego kandydata na podejście bazowe.
 
-Jednocześnie, postęp w projektowaniu algorytmów najkrótszych ścieżek oraz metod przeszukiwania grafów
-powoduje, że pojawiają się nowe propozycje, które mogą być lepiej dopasowane do specyfiki problemu miasta $t$ minut
-niż klasyczne podejście oparte wyłącznie na Dijkstrze. W szczególności interesujące są algorytmy,
-które w pewnych klasach grafów lub przy pewnym typie zapytań oferują lepszą skalowalność
-czasową lub pamięciową.
-W niniejszej pracy rozpatrywany jest nowy algorytm zaproponowany w pracy \cite{arxiv2504_17033},
-który zostanie zestawiony z podejściem opartym na Dijkstrze w zadaniu wyznaczania obszarów miasta $t$ minut.
+Klasyczna implementacja Dijkstry oparta na kopcu binarnym osiąga złożoność
+$O((|V|+|E|)\log|V|)$. Dla pojedynczego zapytania jest to akceptowalne, jednak przy wielokrotnym
+uruchamianiu algorytmu (dla wielu kategorii usług, na grafach o setkach tysięcy wierzchołków)
+logarytmiczny koszt operacji na kolejce priorytetowej zaczyna mieć istotne znaczenie praktyczne.
 
-\subsection{Co oznacza „lepszy algorytm” w praktyce miasta $t$ minut?}
+\subsection{Ograniczony zasięg izochron i warianty Dijkstry}
+\label{sec:intro:warianty-dijkstry}
 
-W kontekście analizy miasta $t$ minut samo porównanie asymptotycznej złożoności algorytmów bywa niewystarczające.
-O ostatecznej przydatności metody decydują m.in.:
+W analizach miasta $t$-minutowego interesuje nas przede wszystkim informacja o osiągalności
+w zadanym progu czasu $t$, a nie pełna tablica odległości do wszystkich wierzchołków.
+Dla typowych wartości $t$ (np.\ 10--20 minut marszu) izochrona obejmuje tylko niewielki
+fragment grafu; większość wierzchołków znajduje się poza nią i nie musi być w ogóle
+odwiedzana w trakcie obliczeń dla danego źródła. Algorytm i jego implementacja powinny
+więc tę okoliczność wykorzystywać.
+
+Prostym ulepszeniem podstawowej wersji algorytmu Dijkstry jest ograniczenie przeszukiwania progiem $t$
+(\emph{$t$-bounded Dijkstra}): algorytm przerywa działanie w momencie, gdy z kolejki priorytetowej
+zostanie zdjęty wierzchołek o tymczasowej odległości przekraczającej $t$. Dzięki temu praca jest proporcjonalna
+do rozmiaru izochrony, a nie do rozmiaru całego grafu, co znacząco redukuje czas obliczeń
+przy małych wartościach $t$ względem rozmiaru sieci. Wariant ten pojawia się m.in.\ w pracy Lama \cite{Lam2024}.
+
+Drugim kierunkiem optymalizacji jest zmiana struktury danych kolejki priorytetowej. Klasyczny
+kopiec binarny daje koszt $O(\log |V|)$ na operację. Gdy zakres możliwych odległości jest
+ograniczony, a właśnie tak jest w t-ograniczonym przeszukiwaniu z progiem $t$, można w jego
+miejsce zastosować tzw.\ \emph{kolejkę kubełkową} (\emph{bucket priority queue}). Zaproponował
+ją pierwotnie Dial dla wag całkowitych \cite{dial1969}, a uogólnili na wagi rzeczywiste
+m.in.\ Cherkassky, Goldberg i Radzik \cite{cherkassky1996}. Wierzchołki są w tym podejściu
+wstawiane do tablicy kubełków FIFO o ustalonej szerokości $\Delta$: wierzchołek o odległości $d$
+trafia do kubełka $\lfloor d/\Delta\rfloor$, a operacja \emph{extract-min} sprowadza się do
+liniowego skanowania tablicy do pierwszego niepustego kubełka. Przy odpowiednim doborze $\Delta$
+koszt amortyzowany na operację spada do $O(1)$, co teoretycznie czyni to podejście atrakcyjnym
+dla problemów o ograniczonym progu czasu i wąskim rozkładzie wag krawędzi, a tak właśnie
+wyglądają grafy sieci pieszej w problemie miasta $t$-minutowego. Trzeba przy tym pamiętać,
+że kolejka kubełkowa wymaga ograniczenia zakresu odległości (w przeciwnym razie liczba kubełków
+rosłaby w nieskończoność), dlatego w praktyce ta modyfikacja kolejki jest zawsze łączona
+z t-ograniczeniem przeszukiwania i nie stanowi jego alternatywy.
+
+W niniejszej pracy podejściem bazowym jest klasyczny algorytm Dijkstry (z kopcem binarnym) bez
+ograniczenia progiem, a porównywane są z nim dwie modyfikacje:
 \begin{itemize}
-  \item \textbf{czas całkowity} wyznaczenia $C(t)$ dla pełnego zestawu kategorii usług,
-  \item \textbf{zużycie pamięci} (szczególnie istotne przy dużych grafach),
-  \item \textbf{skalowalność} względem liczby usług, kategorii i rozmiaru grafu,
-  \item \textbf{zgodność wyniku} (czy algorytmy wyznaczają identyczne zbiory $C(t)$ przy tych samych założeniach).
+  \item wariant \emph{ograniczony progiem $t$}, wykorzystujący ograniczony zasięg izochron,
+  \item wariant z \emph{kolejką kubełkową}, łączący ograniczenie progiem $t$ z zastąpieniem
+        kopca binarnego kolejką kubełkową; druga z tych zmian wykorzystuje ograniczony zakres odległości
+        oraz rozkład wag krawędzi do redukcji kosztu operacji na kolejce priorytetowej.
 \end{itemize}
-Z tych powodów praca koncentruje się na porównaniu algorytmów w warunkach możliwie zbliżonych do praktycznego użycia
-w analizach dostępności, a nie jedynie na analizie teoretycznej.
+Szczegółowe omówienie obu modyfikacji wraz z uzasadnieniem ich doboru zostanie przedstawione
+w rozdziale~\ref{chap:warianty-dijkstry}.
 
-\subsection{Wpływ implementacji: Python a Rust}
-\label{sec:intro:py-vs-rust}
+W literaturze spotyka się również podejście z wykorzystaniem \emph{superźródła}: zamiast uruchamiać
+algorytm osobno dla każdej usługi w obrębie kategorii, do grafu dodaje się jeden wirtualny wierzchołek
+połączony krawędziami o koszcie $0$ ze wszystkimi usługami danej kategorii, a algorytm uruchamia się
+jednokrotnie z tego wierzchołka jako źródła \cite{Lam2024}. Podejście to zostało zastosowane w niniejszej
+pracy we wszystkich rozważanych wariantach, dzięki czemu różnice w czasie wykonania można interpretować
+jako efekt wyłącznie samej modyfikacji algorytmu.
 
-Wybór optymalnego podejścia technicznego do problemu najktótszej ścieżki nie sprowadza się wyłącznie do złożoności obliczeniowej,
-ale w praktyce jest silnie zależny od doboru języka programowania, struktur danych oraz wykonawczego środowiska
-uruchomieniowego. Z tego względu w niniejszej pracy rozważane będzie nie tylko porównanie algorytmów na poziomie idei,
-lecz także porównanie ich implementacji w dwóch odmiennych ekosystemach: Python oraz Rust.
-
-W pracy Lama \cite{Lam2024} autor porównał implementacje tego samego podejścia w Pythonie i w Ruście,
-uzyskując w swoich eksperymentach kilkukrotne przyspieszenie wersji w Rust (około trzykrotne względem wersji w Pythonie).
-Wynik ten sugeruje, że w zadaniach obliczeniowo intensywnych, takich jak wielokrotne wyznaczanie najkrótszych ścieżek na dużych grafach miejskich,
-wybór środowiska uruchomieniowego może istotnie wpływać na czas działania.
-W niniejszej pracy aspekt ten zostanie przebadany również w kontekście alternatywnego algorytmu najkrótszej ścieżki:
-celem jest ocena, czy obserwowane w literaturze przewagi implementacji niskopoziomowych (np.\ w Rust) utrzymują się
-także dla innego podejścia algorytmicznego.
-
-W ramach tej pracy planowane jest zbadanie, w jakim stopniu wybór języka (Python vs Rust) wpływa na:
-(i) czas wyznaczania zbiorów $C_k(t)$,
-(ii) zużycie pamięci
-
-\subsection{Równoległość obliczeń w zadaniu miasta $t$ minut}
+\subsection{Równoległość obliczeń w zadaniu miasta $t$-minutowego}
 \label{sec:intro:parallel}
 
-Kolejnym istotnym wymiarem praktycznej efektywności jest możliwość wykorzystania współczesnych procesorów wielordzeniowych.
-W problemie miasta $t$ minut naturalną osią równoległości jest fakt, że obliczenia dla różnych typów usług
-(sklepy, szkoły, opieka zdrowotna itd.) są wykonywane niezależnie, a dopiero na końcu łączone
-w wynik zbioru $C(t)$.
+Kolejnym istotnym wymiarem praktycznej efektywności jest możliwość wykorzystania współczesnych
+procesorów wielordzeniowych. W problemie miasta $t$-minutowego osią równoległości jest to, że
+obliczenia dla różnych kategorii usług (sklepy, szkoły, opieka zdrowotna itd.) wykonywane są
+niezależnie, a dopiero na końcu łączone przez operację przecięcia w wynik zbioru $C(t)$.
 
-W literaturze spotyka się wprost sugestię równoleglenia tego etapu: dla różnych typów usług można uruchamiać przeszukiwania
-w grafie w oddzielnych wątkach, a następnie scalić uzyskane etykiety osiągalności. W pracy Lama wskazano, że bieżąca
-implementacja jest jednordzeniowa, ale algorytm można zrównoleglić tak, aby różne typy usług były przeszukiwane przez
-różne wątki; po zakończeniu każdy wątek zwraca tablicę etykiet $v.r$, a wątek główny łączy wyniki w rezultat końcowy
-\cite{Lam2024}.
+W literaturze spotyka się wprost sugestię równoleglenia tego etapu: dla różnych typów usług
+można uruchamiać przeszukiwania w grafie w oddzielnych procesach lub wątkach, a następnie scalić
+uzyskane etykiety osiągalności. W pracy Lama wskazano, że bieżąca implementacja jest jednordzeniowa,
+lecz algorytm można zrównoleglić tak, aby różne typy usług były przeszukiwane przez różne wątki;
+po zakończeniu każdy wątek zwraca tablicę etykiet osiągalności, a wątek główny łączy wyniki
+w rezultat końcowy \cite{Lam2024}.
 
-W niniejszej pracy planowane jest przeprowadzenie eksperymentów obejmujących:
-\begin{itemize}
-  \item implementację wielowątkową (z podziałem obliczeń po typach usług),
-  \item pomiar przyspieszenia w funkcji liczby wątków,
-  \item porównanie efektów równoległości w Python i w Rust.
-\end{itemize}
-Takie ujęcie pozwoli ocenić, czy z punktu widzenia analiz miejskich bardziej opłaca się inwestować w nowe algorytmy,
-czy w optymalizację implementacji i równoległość obliczeń.
+W niniejszej pracy zostanie zbadane, jak przyspieszenie czasu wykonania uzyskiwane przez wariant
+równoległy względem sekwencyjnego zmienia się wraz z liczbą procesów roboczych, osobno dla każdego
+z trzech rozważanych wariantów algorytmu Dijkstry. Pozwoli to ocenić, w jakim stopniu poszczególne
+modyfikacje algorytmu oraz równoległość obliczeń wpływają na praktyczną wydajność rozwiązania
+problemu miasta $t$-minutowego.
 
 \section{Cel, zakres i pytania badawcze}
 \label{sec:intro:cel}
 
 \subsection{Cel główny}
 
-Celem niniejszej pracy jest analiza i porównanie podejścia opartego na algorytmie Dijkstry
-z nowym algorytmem zaproponowanym w \cite{arxiv2504_17033} w kontekście
-wyznaczania obszarów miasta $t$ minut.
+Celem niniejszej pracy jest analiza i porównanie trzech wariantów algorytmu Dijkstry
+w kontekście wyznaczania obszarów miasta $t$-minutowego:
+podejścia bazowego (klasyczny algorytm Dijkstry z kopcem binarnym, bez ograniczenia progiem),
+wariantu ograniczonego progiem czasu $t$ (\emph{$t$-bounded Dijkstra})
+oraz wariantu z kolejką kubełkową (\emph{bucket Dijkstra}).
 
-Porównanie jest prowadzone z perspektywy zadania obliczeniowego opisanego w
+Porównanie prowadzone jest z perspektywy zadania obliczeniowego opisanego w
 rozdz.\ \ref{sec:intro:formalizacja}, tj.\ wyznaczania zbiorów $C_k(t)$
 dla zadanych kategorii usług i progu czasu $t$.
 
@@ -194,63 +216,67 @@ dla zadanych kategorii usług i progu czasu $t$.
 
 Zakres pracy obejmuje:
 \begin{itemize}
-  \item implementację podejścia bazowego opartego na Dijkstrze,
-  \item implementację algorytmu z \cite{arxiv2504_17033}
-        w wersji umożliwiającej rozwiązanie zadania miasta $t$ minut,
-  \item zaprojektowanie i przeprowadzenie eksperymentów porównawczych,
-  \item analizę wyników (czas, pamięć, skalowalność) i sformułowanie wniosków.
+  \item przegląd najpopularniejszych algorytmów najkrótszych ścieżek pod kątem ich przydatności
+        do zadania miasta $t$-minutowego oraz uzasadnienie wyboru algorytmu Dijkstry,
+  \item implementację trzech wariantów Dijkstry (bazowego oraz dwóch modyfikacji)
+        z zapewnieniem porównywalnej reprezentacji grafu i wspólnej infrastruktury pomiarowej,
+  \item implementację wariantu równoległego (po kategoriach usług) dla każdego z wariantów algorytmu,
+  \item zaprojektowanie i przeprowadzenie eksperymentów porównawczych na trzech obszarach
+        o rosnącej skali (Gdańsk Południe, Gdańsk, Londyn),
+  \item analizę wyników (czas wykonania, skalowalność, przyspieszenie równoległe)
+        i sformułowanie wniosków.
 \end{itemize}
-Poza zakresem pracy pozostają zagadnienia stricte urbanistyczne (np.\ dobór polityk miejskich),
-a także ocena jakości danych źródłowych w sensie geograficznym; dane są traktowane jako wejście do problemu
-algorytmicznego.
+Poza zakresem pracy pozostają zagadnienia ściśle urbanistyczne (np.\ dobór polityk miejskich),
+a także ocena jakości danych źródłowych w sensie geograficznym; dane są traktowane jako wejście
+do problemu algorytmicznego. Implementacja została ograniczona do języka Python.
+
+\clearpage
 
 \subsection{Pytania badawcze}
 
 Praca jest ukierunkowana na następujące pytania badawcze:
 \begin{description}
-  \item[P1.] Czy algorytm z \cite{arxiv2504_17033} pozwala obniżyć koszt obliczeń (czas i pamięć)
-            w wyznaczaniu zbiorów $C_k(t)$ w problemie miasta $t$ minut
-            w porównaniu do podejścia bazowego opartego na algorytmie Dijkstry,
-            przy zachowaniu zgodności wyniku?
+  \item[P1.] W jakim stopniu wariant Dijkstry ograniczony progiem $t$ (\emph{$t$-bounded Dijkstra})
+            redukuje czas wyznaczania zbiorów $C_k(t)$ w porównaniu z klasycznym algorytmem Dijkstry bez ograniczenia
+            progiem, przy zachowaniu zgodności wyniku?
 
-  \item[P2.] Jakie przyspieszenie dają równoległe obliczenia po typach usług (wielowątkowość)
-            w wyznaczaniu $C_k(t)$ oraz jak skaluje się ono wraz z liczbą wątków
-            w porównaniu do wersji jednowątkowej?
+  \item[P2.] Czy wariant Dijkstry z kolejką kubełkową pozwala uzyskać
+            dalsze przyspieszenie w stosunku do wariantu ograniczonego progiem $t$?
 
-  \item[P3.] W jakim stopniu wybór języka implementacji (Python vs Rust) wpływa na czas działania,
-            zużycie pamięci oraz skalowalność rozważanych rozwiązań w dużych grafach miejskich,
-            i czy obserwowane różnice są porównywalne dla podejścia opartego na Dijkstrze
-            oraz dla algorytmu z \cite{arxiv2504_17033}?
+  \item[P3.] Jakie przyspieszenie dają równoległe obliczenia po kategoriach usług
+            (z wykorzystaniem wieloprocesowości w Pythonie) w wyznaczaniu $C(t)$
+            dla każdego z trzech rozważanych wariantów Dijkstry?
 \end{description}
-
-\clearpage
 
 \section{Metodyka badań i założenia eksperymentalne}
 \label{sec:intro:metodyka}
 
-W celu udzielenia odpowiedzi na pytania badawcze przyjęto metodykę opartą na powtarzalnych eksperymentach
-na grafach miejskich oraz zdefiniowanych zestawach usług. Eksperymenty są projektowane tak, aby porównywać algorytmy
-w warunkach możliwie zbliżonych do praktycznych analiz miasta $t$ minut, przy zachowaniu porównywalności danych wejściowych
+W celu udzielenia odpowiedzi na pytania badawcze przyjęto metodykę opartą na powtarzalnych
+eksperymentach przeprowadzanych na grafach miejskich oraz zdefiniowanych zestawach usług.
+Eksperymenty zostały zaprojektowane tak, aby porównywać algorytmy w warunkach możliwie zbliżonych
+do praktycznych analiz miasta $t$-minutowego, przy zachowaniu porównywalności danych wejściowych
 oraz parametrów modelu.
 
 \subsection{Dane wejściowe i konstrukcja grafu}
 \label{sec:intro:metodyka:dane}
 
-Eksperymenty opierają się na grafach reprezentujących \emph{sieć pieszą} miasta, zbudowanych na podstawie danych
-OpenStreetMap (OSM). Dane OSM są powszechnie wykorzystywane w analizach dostępności, ponieważ zawierają zarówno geometrię
-sieci transportowej, jak i informacje o punktach zainteresowania (PoI), które mogą pełnić rolę usług w problemie miasta
-$t$ minut. W niniejszej pracy ruch modelowany jest wyłącznie jako pieszy.
+Eksperymenty opierają się na grafach reprezentujących \emph{sieć pieszą} miasta, budowanych
+na podstawie danych OpenStreetMap (OSM). Dane OSM są powszechnie wykorzystywane w analizach
+dostępności, ponieważ zawierają zarówno geometrię sieci transportowej, jak i informacje
+o punktach zainteresowania (PoI), które mogą pełnić rolę usług w problemie miasta $t$-minutowego.
+W niniejszej pracy ruch modelowany jest wyłącznie jako pieszy.
 
-Na podstawie danych OSM konstruowany jest graf ważony $G=(V,E)$, w którym wierzchołki odpowiadają punktom sieci,
-a krawędzie odcinkom możliwym do pokonania pieszo.
-Wagi krawędzi są interpretowane jako czasy przejścia, wyznaczane na podstawie długości odcinka oraz przyjętej prędkości marszu.
-Lokalizacje usług są wyznaczane na podstawie danych OSM i mapowane na elementy sieci w sposób zapewniający spójność
-między porównywanymi algorytmami oraz implementacjami. Proces budowy grafu jest inspirowany podejściem zastosowanym przez
-Lama \cite{Lam2024} i obejmuje kroki porządkujące topologię sieci oraz przygotowanie zbiorów węzłów odpowiadających usługom,
-tak aby stanowiły one źródła/cele w obliczeniach izochron.
+Na podstawie danych OSM konstruowany jest graf ważony $G=(V,E)$, w którym wierzchołki odpowiadają
+punktom sieci, a krawędzie odcinkom możliwym do pokonania pieszo.
+Wagi krawędzi interpretuje się jako czasy przejścia, wyznaczane na podstawie długości odcinka
+oraz przyjętej prędkości marszu. Lokalizacje usług są wyznaczane na podstawie danych OSM
+i mapowane na elementy sieci w sposób zapewniający spójność między porównywanymi wariantami
+algorytmu. Proces budowy grafu został zainspirowany podejściem zastosowanym przez Lama
+\cite{Lam2024} i obejmuje kroki porządkujące topologię sieci oraz przygotowanie zbiorów węzłów
+odpowiadających usługom, tak aby stanowiły one źródła lub cele w obliczeniach izochron.
 
-Szczegółowy opis procedury pozyskania danych, filtracji sieci do ruchu pieszego, konstrukcji wag czasowych oraz mapowania usług
-do grafu zostanie przedstawiony w~rozdziale~\ref{chap:dane_i_model}.
+Szczegółowy opis procedury pozyskania danych, filtracji sieci do ruchu pieszego, konstrukcji
+wag czasowych oraz mapowania usług do grafu został przedstawiony w~rozdziale~\ref{chap:dane_i_model}.
 
 \clearpage
 
@@ -262,89 +288,94 @@ co pozwoli ocenić zachowanie badanych algorytmów zarówno w małych, lokalnych
 jak i w warunkach dużego obciążenia obliczeniowego typowego dla metropolii.
 
 \begin{itemize}
-  \item \textbf{Gdańsk Południe} --- część Gdańska położona na południowym zachodzie miasta,
-        obejmująca od 2018~r.\ cztery jednostki pomocnicze:
-        Chełm, Jasień, Orunię Górną--Gdańsk Południe oraz Ujeścisko-Łostowice \cite{wiki:gdansk_poludnie}.
+  \item \textbf{Gdańsk Południe}: część Gdańska położona na południowym zachodzie miasta,
+        obejmująca od 2018~r.\ cztery jednostki pomocnicze: Chełm, Jasień, Orunię
+        Górną--Gdańsk Południe oraz Ujeścisko-Łostowice \cite{wiki:gdansk_poludnie}.
         Stanowi przykład relatywnie małego obszaru i~służy jako scenariusz „lokalny”,
         istotny z~punktu widzenia analiz planistycznych na poziomie dzielnicy.
 
-  \item \textbf{Gdańsk (całe miasto)} --- scenariusz średniej skali, pozwalający badać wpływ wzrostu rozmiaru grafu
-        oraz liczby usług na czas i zużycie pamięci, przy zachowaniu spójnego kontekstu urbanistycznego
-        i porównywalnych założeń modelu.
+  \item \textbf{Gdańsk (całe miasto)}: scenariusz średniej skali, pozwalający badać wpływ
+        wzrostu rozmiaru grafu oraz liczby usług na czas wykonania, przy zachowaniu spójnego
+        kontekstu urbanistycznego i porównywalnych założeń modelu.
 
-  \item \textbf{Londyn} --- przykład bardzo dużego miasta, służący do oceny skalowalności podejść
+  \item \textbf{Londyn}: przykład bardzo dużego miasta, służący do oceny skalowalności podejść
         w warunkach grafu o znacznie większym rozmiarze oraz większej liczbie lokalizacji usług.
-        Ten przypadek pełni rolę testu „stresowego” dla algorytmów oraz implementacji (w tym wariantów wielowątkowych).
+        Przypadek ten pełni rolę testu „stresowego” dla algorytmów oraz ich implementacji
+        (w tym wariantów wieloprocesowych).
 \end{itemize}
 
-Dokładny sposób wyznaczenia granic obszarów oraz pozyskania odpowiadających im danych z~OpenStreetMap
-zostanie opisany w~rozdziale~\ref{chap:dane_i_model}.
+Dokładny sposób wyznaczenia granic obszarów oraz pozyskania odpowiadających im danych
+z~OpenStreetMap został opisany w~rozdziale~\ref{chap:dane_i_model}.
 
 \subsection{Projekt eksperymentów}
 \label{sec:intro:metodyka:scenariusze}
 
-W niniejszej pracy celem eksperymentów jest przede wszystkim porównanie \emph{własności obliczeniowych} rozważanych podejść,
-a nie analiza wrażliwości wyników na parametry urbanistyczne lub modelowe.
-Dlatego przyjęto stały próg czasu $t=15$ minut, ustaloną prędkość marszu $v=5\,\mathrm{km/h}$ (zgodnie z \cite{olivari2023presenting})
-oraz jeden zdefiniowany zbiór kategorii usług.
-Takie ograniczenie pozwala skupić się na porównaniu algorytmów i implementacji w warunkach odpowiadających typowemu użyciu
-pojęcia „miasta 15 minut”.
+Celem eksperymentów w niniejszej pracy jest przede wszystkim porównanie \emph{własności
+obliczeniowych} rozważanych podejść, a nie analiza wrażliwości wyników na parametry
+urbanistyczne lub modelowe. Z tego względu przyjęto stały próg czasu $t=15$ minut, ustaloną
+prędkość marszu $v=5\,\mathrm{km/h}$ (zgodnie z \cite{olivari2023presenting})
+oraz jeden zdefiniowany zbiór kategorii usług. Ograniczenie to pozwala skupić się
+na porównaniu wariantów algorytmu w warunkach odpowiadających typowemu użyciu pojęcia
+„miasta 15-minutowego”.
 
-Eksperymenty są projektowane jako zestaw porównań kontrolowanych, w których zmieniane są wyłącznie czynniki istotne
-dla celów pracy:
+Eksperymenty zostały zaprojektowane jako zestaw porównań kontrolowanych, w których zmieniane
+są wyłącznie czynniki istotne dla celów pracy:
 \begin{itemize}
-  \item \textbf{wariant algorytmiczny} --- podejście bazowe oparte na algorytmie Dijkstry oraz algorytm z \cite{arxiv2504_17033},
-  \item \textbf{wariant implementacyjny} --- implementacja w Python oraz implementacja w Rust,
-  \item \textbf{wariant wykonawczy} --- wykonanie sekwencyjne (jednowątkowe) oraz wykonanie równoległe (wielowątkowe),
-        zgodnie z podziałem obliczeń po typach usług.
+  \item \textbf{wariant algorytmiczny}: trzy warianty algorytmu Dijkstry, tj.\ klasyczny
+        (bez ograniczenia progiem), ograniczony progiem $t$ oraz z kolejką kubełkową,
+  \item \textbf{wariant wykonawczy}: wykonanie sekwencyjne (jednoprocesowe) oraz wykonanie
+        równoległe (wieloprocesowe), zgodnie z podziałem obliczeń po kategoriach usług.
 \end{itemize}
-Skalowalność rozwiązań jest oceniana poprzez porównania na obszarach o różnej wielkości i złożoności sieci
-(opisanych w podrozdziale \ref{sec:intro:metodyka:obszary}), co pozwala analizować wpływ rozmiaru grafu i liczby usług
-bez zmiany założeń modelowych.
-
-\subsection{Miary porównawcze}
-\label{sec:intro:metodyka:miary}
-
-W pracy raportowane są miary bezpośrednio związane z efektywnością obliczeniową:
-\begin{itemize}
-  \item \textbf{czas wykonania} wyznaczenia zbiorów osiągalności (zarówno w ujęciu całkowitym, jak i w ujęciu per kategoria),
-  \item \textbf{zużycie pamięci} w trakcie obliczeń (np.\ wartość maksymalna oraz wartości reprezentatywne dla przebiegu),
-  \item \textbf{skalowalność} czasu i pamięci w funkcji rozmiaru grafu oraz liczby usług (na przykładzie trzech obszarów testowych),
-  \item \textbf{przyspieszenie równoległe} i efektywność w funkcji liczby wątków w wariancie wielowątkowym,
-  \item \textbf{zgodność wyniku} pomiędzy podejściami (weryfikacja, że wyznaczane zbiory osiągalności są identyczne
-        przy tych samych danych wejściowych i parametrach modelu).
-\end{itemize}
-Miary przestrzenne (np.\ udział węzłów spełniających warunek, miary pokrycia lub agregacja do siatki) mogą być wykorzystywane
-pomocniczo do prezentacji i interpretacji rezultatów, jednak nie stanowią głównych kryteriów porównania w tej pracy.
+Wszystkie warianty zostały zaimplementowane w języku Python na wspólnej reprezentacji grafu,
+co eliminuje wpływ czynników nieistotnych dla porównania i pozwala interpretować różnice
+w czasie wykonania jako efekt wyłącznie samej zmiany algorytmu lub trybu wykonawczego.
+Skalowalność rozwiązań oceniana jest poprzez porównania na obszarach o różnej wielkości
+i złożoności sieci (opisanych w podrozdziale \ref{sec:intro:metodyka:obszary}), dzięki czemu
+można analizować wpływ rozmiaru grafu i liczby usług bez zmiany założeń modelowych.
 
 \section{Struktura pracy}
 \label{sec:intro:struktura}
 
 Praca składa się z siedmiu rozdziałów.
 
-W rozdziale~1 wprowadzono problem miasta 15 minut jako zadanie obliczeniowe, przedstawiono jego formalizację w modelu grafowym
-oraz omówiono kluczowe wyzwania algorytmiczne. Zdefiniowano również cel pracy i pytania badawcze, a także przyjęte założenia
+W rozdziale~\ref{chap:intro} wprowadzono problem miasta $t$-minutowego jako zadanie obliczeniowe,
+przedstawiono formalizację w modelu grafowym oraz omówiono kluczowe wyzwania algorytmiczne.
+Zdefiniowano cel pracy, pytania badawcze \textbf{P1}--\textbf{P3} oraz przyjęte założenia
 eksperymentalne.
 
-Rozdział~2 opisuje dane i model obliczeniowy wykorzystywany w eksperymentach: sposób pozyskania i przygotowania sieci pieszej
-oraz punktów usług, przyjęty model wag czasowych oraz elementy zapewniające
-porównywalność eksperymentów pomiędzy różnymi algorytmami i implementacjami.
+Rozdział~\ref{chap:dane_i_model} opisuje dane i model obliczeniowy wykorzystywany
+w~eksperymentach: pozyskanie sieci pieszej i punktów usług z OpenStreetMap, konstrukcję
+grafu ważonego (konsolidacja skrzyżowań, wagi czasowe), mapowanie ośmiu kategorii usług
+NEXI na węzły sieci oraz charakterystykę trzech obszarów badawczych o rosnącej skali
+(Gdańsk Południe, Gdańsk, Londyn).
 
-W rozdziale~3 przedstawiono podejście bazowe oparte na algorytmie Dijkstry w kontekście wyznaczania miasta 15 minut.
-Omówiono warianty istotne praktycznie dla obliczania izochron oraz rozważono wersję sekwencyjną
-i wariant równoległy oparty na podziale obliczeń po typach usług.
+W rozdziale~\ref{chap:sssp} przedstawiono przegląd czterech klasycznych algorytmów
+najkrótszych ścieżek: Dijkstry, Bellmana-Forda, A* oraz Floyda-Warshalla, wraz
+z dyskusją ich założeń, złożoności oraz przydatności do wyznaczania izochron
+w~problemie miasta $t$-minutowego. Na tej podstawie uzasadniono wybór algorytmu Dijkstry
+jako punktu wyjścia dalszych rozważań.
 
-Rozdział~4 poświęcono algorytmowi zaproponowanemu w \cite{arxiv2504_17033}. Przedstawiono jego ideę, elementy kluczowe dla
-wydajności oraz sposób adaptacji do zadania obliczania zbiorów osiągalności w problemie miasta 15 minut, a także zestawiono go
-koncepcyjnie z podejściem bazowym.
+Rozdział~\ref{chap:warianty-dijkstry} poświęcono trzem rozważanym wariantom algorytmu
+Dijkstry (bazowy z~kopcem binarnym, ograniczony progiem~$t$, z~kolejką kubełkową)
+oraz konstrukcji superźródła kategorii usług, która redukuje liczbę uruchomień SSSP.
+Omówiono własności wariantów, dobór parametru $\Delta$ oraz oczekiwany charakter zysku
+wydajnościowego w~kontekście pytań \textbf{P1} i~\textbf{P2}.
 
-W rozdziale~5 opisano szczegóły implementacji i środowisko eksperymentalne: architekturę rozwiązania, implementacje w Pythonie i w Ruście,
-warianty jednowątkowe i wielowątkowe, procedury walidacji poprawności oraz metody pomiaru czasu i zużycia pamięci.
+W rozdziale~\ref{chap:implementacja} opisano wspólną infrastrukturę implementacyjną
+(wybór reprezentacji grafu, biblioteki Pythona), warianty sekwencyjny i~wieloprocesowy
+z~podziałem obliczeń po kategoriach usług, środowisko sprzętowe
+oraz metodykę pomiaru czasu i~walidacji poprawności wyników.
 
-Rozdział~6 zawiera wyniki eksperymentów dla trzech obszarów o rosnącej skali (Gdańsk Południe, Gdańsk, Londyn).
-Zaprezentowano porównanie algorytmów (Dijkstra vs \cite{arxiv2504_17033}), porównanie implementacji (Python vs Rust),
-oraz wpływ równoległości obliczeń (jednowątkowość vs wielowątkowość), wraz z dyskusją uzyskanych rezultatów.
+Rozdział~\ref{chap:wyniki} prezentuje wyniki eksperymentów: walidację zgodności zbiorów
+$C(t)$ między wariantami, wizualizacje mapowe, pełne tabele czasów wykonania
+oraz analizę empiryczną w~sekcjach odpowiadających pytaniom \textbf{P1}--\textbf{P3}
+(ograniczenie progiem~$t$, kolejka kubełkowa, zrównoleglenie) wraz z~podrozdziałem
+o~łącznym efekcie obu ścieżek optymalizacji.
 
-Pracę zamyka rozdział~7, w którym podsumowano wyniki, udzielono odpowiedzi na pytania badawcze, wskazano ograniczenia oraz
-zaproponowano możliwe kierunki dalszych badań.
+Pracę zamyka rozdział~\ref{chap:podsumowanie}. Zawiera on odpowiedzi
+na~pytania \textbf{P1}--\textbf{P3} na~podstawie wyników z~rozdz.~\ref{chap:wyniki},
+omówienie ograniczeń przyjętej metodyki (m.in.\ rola superźródła i~stałych parametrów
+$t$, $\Delta$, $v$), propozycje kierunków dalszych badań oraz wnioski końcowe
+o~praktycznym doborze wariantów algorytmu i~trybu wykonania w~analizach dostępności
+w~skali miasta.
 

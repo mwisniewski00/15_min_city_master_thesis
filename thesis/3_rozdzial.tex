@@ -1,2 +1,455 @@
-\mychapter{Algorytm z optymalną złożonością czasową}
-\label{chap:optymalny_alogrytm}
+\mychapter{Warianty algorytmu Dijkstry dla problemu miasta 15-minutowego}
+\label{chap:warianty-dijkstry}
+
+W~rozdziale~\ref{chap:sssp} uzasadniono wybór algorytmu Dijkstry jako podstawy
+rozwiązania problemu miasta 15-minutowego. Klasyczna implementacja oparta na kopcu
+binarnym, traktowana w~literaturze jako rozwiązanie domyślne, nie wykorzystuje
+jednak w~pełni własności tego zadania: ograniczonego zasięgu izochron
+wyznaczonych progiem $t$, wąskiego rozkładu wag krawędzi oraz powtarzalnej
+struktury obliczeń po kategoriach usług.
+
+Poniżej omówiono trzy warianty algorytmu Dijkstry, które posłużyły
+do eksperymentów opisanych dalej w~pracy:
+\begin{itemize}
+  \item wariant \emph{bazowy}: klasyczny algorytm Dijkstry
+        z~kopcem binarnym, bez ograniczenia progiem, w~którym warunek
+        $\le t$ stosowany jest dopiero po zakończeniu przeszukiwania
+        jako filtr na tablicy odległości,
+  \item wariant \emph{ograniczony progiem} $t$: ten sam algorytm,
+        w~którym przeszukiwanie kończy się w~chwili wyciągnięcia z~kopca
+        wierzchołka o~odległości $>t$, dzięki czemu praca jest proporcjonalna
+        do rozmiaru izochrony, a~nie do rozmiaru całego grafu,
+  \item wariant z~\emph{kolejką kubełkową}: ten sam algorytm
+        ograniczony progiem $t$, w~którym kopiec binarny zastępuje się
+        jednopoziomową tablicą kubełków FIFO o~stałej szerokości $\Delta$,
+        co~zmienia koszt amortyzowany na operację z~$O(\log|V|)$ na~$O(1)$.
+\end{itemize}
+Wspólnym elementem wszystkich wariantów jest \emph{redukcja wieloźródłowa}
+oparta na konstrukcji superźródła~\cite{Lam2024}, omówiona w~podrozdziale
+\ref{sec:warianty:supersource}.
+
+\section{Redukcja wieloźródłowa: konstrukcja superźródła}
+\label{sec:warianty:supersource}
+
+Z~definicji zbioru dostępności
+$C_k(t)=\{\,v\in V:\ \tau_k(v)\le t\,\}$,
+gdzie $\tau_k(v)=\min_{s\in S_k} d_G(v,s)$
+(podrozdz.~\ref{sec:intro:formalizacja}),
+wynika, że dla kategorii usług $S_k$ poszukujemy minimum odległości
+\emph{po wszystkich} źródłach $s\in S_k$. Naiwna realizacja wymagałaby
+uruchomienia algorytmu SSSP osobno dla każdego $s\in S_k$, czyli $|S_k|$
+przeszukiwań grafu. Dla rozważanych obszarów miejskich
+liczność $|S_k|$ dochodzi w~niektórych kategoriach do kilkunastu tysięcy
+(tab.~\ref{tab:uslugi_kategorie}), co czyni takie podejście nieefektywnym.
+
+Redukcja wieloźródłowa zaproponowana przez Lama~\cite{Lam2024}
+w~kontekście problemu miasta 15-minutowego sprowadza wariant
+wieloźródłowy do jednorazowego uruchomienia SSSP. W~grafie $G$ dodaje się
+\emph{wirtualny wierzchołek superźródłowy} $s^\star_k\notin V$ oraz krawędzie
+o~wadze zerowej łączące go ze wszystkimi usługami kategorii:
+\[
+G^\star_k=\bigl(V\cup\{s^\star_k\},\ E\cup\{(s^\star_k,s):\,s\in S_k\}\bigr),
+\qquad
+w(s^\star_k,s)=0\text{ dla każdego }s\in S_k.
+\]
+Wówczas dla każdego $v\in V$ zachodzi równość
+\[
+d_{G^\star_k}(s^\star_k,v)=\min_{s\in S_k} d_G(s,v)=\tau_k(v),
+\]
+a~zbiór $C_k(t)$ wyznacza się jako
+\[
+C_k(t)=\{\,v\in V:\ d_{G^\star_k}(s^\star_k,v)\le t\,\}.
+\]
+Uzyskanie zbioru $C_k(t)$ wymaga zatem dokładnie jednego uruchomienia algorytmu
+SSSP z~superźródła $s^\star_k$, niezależnie od liczności zbioru $S_k$.
+
+Konstrukcja superźródła jest wspólna dla wszystkich trzech rozważanych
+wariantów algorytmu, dzięki czemu różnice w~mierzonych czasach wykonania
+można interpretować jako efekt wyłącznie zmiany algorytmu wewnętrznego,
+a~nie różnicy w~sposobie obsługi wielu źródeł.
+
+\clearpage
+
+\section{Wariant bazowy: klasyczny algorytm Dijkstry}
+\label{sec:warianty:regular}
+
+Wariant bazowy jest klasycznym algorytmem Dijkstry z~kopcem
+binarnym opisanym w~podrozdziale~\ref{sec:sssp:dijkstra}, uruchomionym
+z~superźródła $s^\star_k$ na grafie $G^\star_k$. Przeszukiwanie nie jest
+w~żaden sposób ograniczane progiem $t$: algorytm działa do wyczerpania
+kolejki priorytetowej i~zwraca pełną tablicę odległości $d_{G^\star_k}(s^\star_k,v)$
+dla wszystkich osiągalnych $v\in V$. Warunek dostępności w~czasie $\le t$
+jest następnie nakładany jako filtr na uzyskaną tablicę odległości:
+\[
+C_k(t)=\{\,v\in V:\ d_{G^\star_k}(s^\star_k,v)\le t\,\}.
+\]
+Pełna ścieżka obliczeniowa wariantu bazowego polega na 
+przeszukaniu całego osiągalnego grafu, a~następnie filtracji po progu.
+
+\subsection{Rola wariantu bazowego w~porównaniu}
+\label{subsec:warianty:regular:rola}
+
+Wariant bazowy pełni tu podwójną rolę. Po pierwsze, służy jak wzorzec poprawności.
+Przy ustalonym progu $t$ zwracane zbiory muszą
+zgadzać się z~wynikami pozostałych dwóch wariantów. Weryfikacja polega na
+porównaniu wyników dla tej samej pary (graf, kategoria) i~pozwala uchwycić
+ewentualne błędy w~ograniczeniu progiem lub w~kolejce kubełkowej.
+
+Po drugie, daje punkt odniesienia dla pomiarów czasu: różnica między
+czasem wariantu bazowego a~czasem wariantu ograniczonego progiem~$t$
+odzwierciedla wpływ samego ograniczenia zasięgu izochrony na koszt obliczeń,
+czyli odpowiada na pytanie badawcze~\textbf{P1}.
+
+\section{Wariant ograniczony progiem $t$}
+\label{sec:warianty:modified}
+
+Wariant ograniczony progiem~$t$ korzysta z~tej samej procedury co~wariant
+bazowy, z~tym że przeszukiwanie kończy się w~momencie wyciągnięcia z~kopca
+wierzchołka o~tymczasowej odległości większej niż~$t$. W~efekcie odwiedzana
+jest w~zasadzie ta część grafu, która wpada w~izochronę, tj.\ zbiór
+$\{v\in V:\,d_{G^\star_k}(s^\star_k,v)\le t\}\cup\{s^\star_k\}$.
+
+\subsection{Schemat algorytmu}
+\label{subsec:warianty:modified:schemat}
+
+Schemat algorytmu różni się od wariantu bazowego w~dwóch miejscach: dodano
+warunek wyjścia z~głównej pętli przy odległości większej od~$t$ oraz nie
+wstawia się do kopca wierzchołków, których tymczasowa odległość przekraczałaby
+ten próg.
+
+\begin{codebox}
+\Procname{$\proc{Bounded-Dijkstra}(G^\star_k, s^\star_k, t)$}
+\li \For each $v\in V\cup\{s^\star_k\}$
+\li \Do $\id{dist}[v]\gets\infty$ \End
+\li $\id{dist}[s^\star_k]\gets 0$
+\li $H\gets\{(0,s^\star_k)\}$
+\li \While $H\neq\emptyset$
+\li \Do $(d,u)\gets\proc{Extract-Min}(H)$
+\li     \If $d > t$
+\li     \Then \kw{break}                              \quad // przerwanie progiem $t$
+        \End
+\li     \If $d > \id{dist}[u]$
+\li     \Then \kw{continue}
+        \End
+\li     \For each $(u,v)\in E(G^\star_k)$
+\li     \Do $\id{nd}\gets d + w(u,v)$
+\li         \If $\id{nd} > t$
+\li         \Then \kw{continue}                       \quad // pruning relaksacji
+            \End
+\li         \If $\id{nd} < \id{dist}[v]$
+\li         \Then $\id{dist}[v]\gets\id{nd}$
+\li             $\proc{Heap-Insert}(H,(\id{nd},v))$
+            \End
+        \End
+    \End
+\li \Return $\{v:\,\id{dist}[v]\le t\}$
+\end{codebox}
+
+\subsection{Poprawność ograniczenia progiem}
+\label{subsec:warianty:modified:poprawnosc}
+
+Argument poprawności jest taki sam jak w~klasycznym algorytmie Dijkstry: gdy z~kopca
+wyciągany jest wierzchołek $u$ o~odległości~$d$, żaden z~pozostających
+w~kopcu elementów nie ma odległości mniejszej od~$d$.
+Jeśli zatem $d>t$, to odległość każdego elementu nadal obecnego w~kopcu jest
+co~najmniej $d$, a~więc większa niż~$t$; żaden wierzchołek osiągalny
+w~czasie $\le t$ nie może już zostać dodany do izochrony. Przerwanie pętli
+w~tym momencie jest zatem bezstratne.
+
+Drugi warunek (pominięcie relaksacji prowadzącej do odległości $\id{nd}>t$)
+jest analogicznym ograniczeniem przeszukiwania: wierzchołki o~tymczasowej odległości większej
+od~$t$ nie wejdą do zwracanego zbioru $C_k(t)$, dlatego ich dalsze utrzymywanie
+w~kopcu (a~tym bardziej rozszerzanie z~nich) jest zbędne. Pominięcie wstawienia
+do kopca nie zmienia wyniku, ale zmniejsza rozmiar kopca w~trakcie
+przeszukiwania, co~ma znaczenie praktyczne ze~względu na logarytmiczny
+koszt operacji \proc{Heap-Insert} i~\proc{Extract-Min} w~funkcji liczności
+kopca.
+
+\clearpage
+
+\subsection{Złożoność i oczekiwany zysk}
+\label{subsec:warianty:modified:zlozonosc}
+
+Asymptotycznie złożoność wariantu ograniczonego pozostaje
+$\mathcal{O}((|V'|+|E'|)\log|V'|)$, gdzie $V'$ i~$E'$ oznaczają, odpowiednio,
+zbiór wierzchołków i~krawędzi faktycznie odwiedzonych przez algorytm.
+Zysk względem wariantu bazowego zależy zatem od~tego, jaki udział grafu
+pokrywa izochrona $C_k(t)$: im mniejszy stosunek $|V'|/|V|$, tym więcej
+pracy odcina próg.
+
+W~problemie miasta 15-minutowego skala tego zysku jest jednak ograniczona
+przez redukcję wieloźródłową (podrozdz.~\ref{sec:warianty:supersource}).
+Algorytm uruchamiany jest nie z~pojedynczego wierzchołka, lecz z~superźródła
+$s^\star_k$ połączonego krawędziami zerowej wagi ze~wszystkimi usługami
+kategorii, więc do~izochrony trafia każdy wierzchołek znajdujący się
+w~odległości $\le t$ od~\emph{którejkolwiek} usługi z~$S_k$. Dla realistycznych
+miast, w~których liczność $|S_k|$ dochodzi do~kilkunastu tysięcy
+(tab.~\ref{tab:uslugi_kategorie}), zbiór $C_k(t)$ może pokrywać dominującą
+część grafu, a~praktyczny zysk z~samego ograniczenia progiem zależy w~znacznym
+stopniu od~liczności i~rozkładu usług w~analizowanym obszarze. W~rozdziale~\ref{chap:wyniki}
+zestawiono wyniki eksperymentów, które pozwalają oszacować ten zysk w~liczbach.
+
+\subsection{Relacja do literatury}
+\label{subsec:warianty:modified:relacja}
+
+Odpowiada to algorytmowi \texttt{custom\_dijkstra} z~implementacji
+referencyjnej Lama~\cite{Lam2024}. Różnice względem kodu użytego tutaj mają
+charakter inżynieryjny i~dotyczą m.in.\
+przygotowanie reprezentacji grafu (jednorazowe scalenie krawędzi równoległych
+i~przeindeksowanie wierzchołków na liczby całkowite), wykorzystanie tablicowej
+listy sąsiedztwa zamiast wielowarstwowych słowników biblioteki NetworkX
+oraz dołączenie superźródła jako kolejnego wierzchołka w~tablicowej liście sąsiedztwa
+(podrozdz.~\ref{sec:warianty:supersource}).
+
+\section{Wariant z~kolejką kubełkową}
+\label{sec:warianty:bucket}
+
+W~podrozdziale~\ref{sec:intro:warianty-dijkstry} wskazano, że przy
+ograniczonym zakresie odległości i~wąskim rozkładzie wag krawędzi możliwe
+jest zastąpienie kopca binarnego \emph{kolejką kubełkową} (strukturą
+zaproponowaną pierwotnie przez Diala~\cite{dial1969} i~uogólnioną przez
+Cherkassky'ego, Goldberga i~Radzika~\cite{cherkassky1996}). Realizuje on tę samą logikę co~$t$-ograniczony algorytm Dijkstry, przy czym zamiast
+kopca binarnego stosuje się jednopoziomową tablicę kubełków FIFO o~stałej
+szerokości~$\Delta$. Wariant zaimplementowany w~niniejszej pracy
+(podrozdz.~\ref{subsec:warianty:bucket:schemat}) odbiega od~klasycznego
+opisu z~pracy~\cite{cherkassky1996} w~dwóch szczegółach: po~pierwsze,
+pracujemy z~wagami rzeczywistymi (czas przejścia w~minutach), podczas
+gdy analiza CGR zakłada wagi całkowite; po~drugie, zamiast jawnej
+operacji \emph{decrease-key} polegającej na~przeniesieniu wierzchołka
+między kubełkami przy zmianie etykiety stosujemy leniwe usuwanie -- ten
+sam wierzchołek może występować w~kilku kopiach w~tym samym kubełku,
+a~nieaktualne pary $(d_t,u)$ są odrzucane dopiero przy ekstrakcji.
+
+\subsection{Struktura danych}
+\label{subsec:warianty:bucket:struktura}
+
+Kolejka kubełkowa składa się z~tablicy kubełków
+$B[0], B[1],\dots, B[m-1]$, gdzie każdy kubełek jest kolejką FIFO
+przechowującą pary $(d,v)$ (tymczasowa odległość $d$, wierzchołek $v$).
+Wstawienie wierzchołka $v$ o~tymczasowej odległości $d$ polega na dopisaniu
+pary $(d,v)$ na koniec kubełka o~indeksie
+\[
+\mathrm{idx}(d)=\lfloor d/\Delta\rfloor.
+\]
+Operacja \emph{extract-min} polega na liniowym skanowaniu tablicy
+od~bieżącego wskaźnika \texttt{min\_idx} w~stronę większych indeksów do
+chwili napotkania pierwszego niepustego kubełka i~zwróceniu pierwszej pary
+$(d,v)$ z~tego kubełka.
+Wskaźnik \texttt{min\_idx} nigdy się nie zmniejsza, dlatego łączna
+praca wykonywana w~ramach skanu w~trakcie całego przebiegu algorytmu
+ograniczona jest przez liczbę pól tablicy kubełków
+\[
+m=\lfloor t/\Delta\rfloor+1.
+\]
+W~implementacji przed każdym przeszukiwaniem długość tablicy kubełków jest
+ustawiana tak, by wystarczyło co najmniej \(\lfloor t/\Delta\rfloor+1\) pól
+(na indeksy \(0,\dots,\lfloor t/\Delta\rfloor\); w~szczególności dla
+$t=15$~min i~$\Delta=1$~min jest to $16$~pól, bo odległość równa progowi
+wpada do kubełka o~indeksie~$\lfloor t/\Delta\rfloor$).
+
+\subsection{Schemat algorytmu}
+\label{subsec:warianty:bucket:schemat}
+
+\begin{codebox}
+\Procname{$\proc{Bucket-Dijkstra}(G^\star_k, s^\star_k, t, \Delta)$}
+\li \For each $v\in V\cup\{s^\star_k\}$
+\li \Do $\id{dist}[v]\gets\infty$ \End
+\li $\id{dist}[s^\star_k]\gets 0$
+\li $\proc{Bucket-Insert}(B, s^\star_k, 0)$
+\li \While $B$ zawiera niepusty kubełek
+\li \Do $(d_t,u)\gets\proc{Bucket-Extract-Min}(B)$
+\li     \If $d_t \neq \id{dist}[u]$
+\li     \Then \kw{continue}                            \quad // nieaktualna para $(d_t,u)$
+        \End
+\li     \If $\id{dist}[u]\ge t$
+\li     \Then \kw{continue}
+        \End
+\li     \For each $(u,v)\in E(G^\star_k)$
+\li     \Do $\id{nd}\gets \id{dist}[u] + w(u,v)$
+\li         \If $\id{nd}<\id{dist}[v]$ \kw{and} $\id{nd}\le t$
+\li         \Then $\id{dist}[v]\gets\id{nd}$
+\li             $\proc{Bucket-Insert}(B,v,\id{nd})$
+            \End
+        \End
+    \End
+\li \Return $\{v:\,\id{dist}[v]\le t\}$
+\end{codebox}
+
+Od wariantu ograniczonego progiem $t$ różni się więc głównie typem kolejki
+oraz sposobem odrzucania nieaktualnych par: przy kopcu binarnym wystarcza
+warunek $d>\id{dist}[u]$, a~przy kubełkach konieczne jest $d_t\neq\id{dist}[u]$,
+bo przy $\Delta>w_{\min}$ ten sam wierzchołek może w~jednym kubełku czekać
+w~kilku kopiach o~różnych tymczasowych odległościach (zob.\ podrozdz.\
+\ref{subsec:warianty:bucket:tryby}).
+
+\subsection{Tryby \emph{label-setting} i~\emph{label-correcting}}
+\label{subsec:warianty:bucket:tryby}
+
+W~kolejce kubełkowej liczy się stosunek szerokości
+kubełka~$\Delta$ do najmniejszej dodatniej wagi krawędzi
+$w_{\min}=\min_{e\in E}w(e)$. Od tego zależy, czy mamy do czynienia z~trybem
+\emph{label-setting}, jak w~klasycznym algorytmie
+Dijkstry, czy z~trybem \emph{label-correcting},
+gdzie ten sam wierzchołek może być wyciągany z~kolejki wielokrotnie.
+Podział na te dwa tryby i~odpowiadająca mu terminologia są standardowe
+w~literaturze o~optymalizacji sieciowej; przyjmuję je za
+Ahują, Magnantim i~Orlinem~\cite{ahuja1993network}.
+Zachowanie wariantu kubełkowego o~szerokości~$\Delta$ jako algorytmu,
+w~którym wierzchołki mogą być skanowane więcej niż raz, odnotowali
+eksperymentalnie Cherkassky, Goldberg i~Radzik przy okazji analizy
+\emph{approximate bucket implementation} algorytmu
+Dijkstry~\cite{cherkassky1996}.
+
+\paragraph{\emph{label-setting} ($\Delta\le w_{\min}$).}
+Przy $\Delta\le w_{\min}$ wariant kubełkowy zachowuje kluczową własność
+klasycznego algorytmu Dijkstry: każdy wierzchołek jest wyciągany z~kolejki
+co~najwyżej raz, a~wartość $\id{dist}[u]$ w~momencie wyciągnięcia jest już
+docelowa. Argument przebiega standardowo: gdy procedura wyciąga wierzchołek
+$u$ z~kubełka o~indeksie $k$, wszystkie jeszcze nieobsłużone wierzchołki $v$
+spełniają $\id{dist}[v]\ge k\Delta$ (wskaźnik \texttt{min\_idx} nigdy się nie
+cofa). Każda ścieżka, która mogłaby jeszcze obniżyć $\id{dist}[u]$, musiałaby kończyć
+się krawędzią wychodzącą z~pewnego takiego $v$ i~prowadzącą do~$u$, dając
+wartość
+\[
+\id{dist}[v]+w(v,u)\;\ge\;k\Delta+w_{\min}\;\ge\;k\Delta+\Delta\;=\;(k+1)\Delta,
+\]
+czyli wyprowadzającą $\id{dist}[u]$ poza bieżący kubełek. W~chwili wyciągnięcia
+$\id{dist}[u]$ jest więc już ostateczne. Ten sam argument leży u~podstaw analizy
+Cherkassky'ego, Goldberga i~Radzika~\cite{cherkassky1996}; algorytm Diala dla
+wag całkowitych jest jego szczególnym przypadkiem, w~którym $\Delta=1$ oraz
+$w_{\min}=1$~\cite{dial1969}.
+
+\paragraph{\emph{label-correcting} ($\Delta>w_{\min}$).}
+Gdy $\Delta>w_{\min}$, w~obrębie jednego kubełka mogą znaleźć się wierzchołki,
+których tymczasowe odległości różnią się więcej niż o~$w_{\min}$. Wówczas
+relaksacja krawędzi $(u,v)$, w~której zarówno $u$, jak i~$v$ leżą w~tym samym
+kubełku, może obniżyć $\id{dist}[v]$ i~wstawić $v$ do kolejki kolejny raz,
+być może ponownie do tego samego kubełka. W~konsekwencji ten sam wierzchołek
+trafia do kolejki wielokrotnie, a~powyższy argument przestaje obowiązywać:
+$\id{dist}[u]$ w~chwili pierwszego wyciągnięcia nie musi być jeszcze
+ostateczne.
+
+\clearpage
+
+Poprawność zachowuje mechanizm \emph{lazy deletion}: każda para $(d_t,u)$
+przechowuje wartość $\id{dist}[u]$ z~chwili wstawienia, a~przy wyciąganiu
+sprawdzamy warunek $d_t=\id{dist}[u]$. Pary nieaktualne (dla których
+$d_t>\id{dist}[u]$, bo wartość w~tablicy została w~międzyczasie poprawiona)
+są pomijane bez relaksacji. Każda \emph{skuteczna} ekstrakcja, czyli taka,
+która faktycznie wywołuje relaksację sąsiadów, odpowiada nowej, mniejszej
+wartości $\id{dist}[u]$ niż jakakolwiek wcześniejsza skuteczna ekstrakcja
+tego wierzchołka. Ciąg kolejnych wartości $\id{dist}[u]$ jest więc
+malejący; ponieważ każda z~tych wartości jest długością pewnej ścieżki
+z~$s^\star_k$ do~$u$ w~skończonym grafie o~nieujemnych wagach, zbiór możliwych
+wartości jest skończony, więc ciąg nie może ciągnąć się w~nieskończoność.
+Algorytm wykonuje zatem skończoną liczbę kroków. Wielkość tego nadmiaru
+względem trybu \emph{label-setting} zależy od rozkładu wag krawędzi i~rozrzutu
+odległości w~obrębie pojedynczych kubełków; omówieniu tego efektu poświęcony
+jest podrozdz.~\ref{subsec:warianty:bucket:delta}.
+
+\subsection{Dobór szerokości kubełka $\Delta$}
+\label{subsec:warianty:bucket:delta}
+
+Wybór $\Delta$ jest kluczowym parametrem wariantu kubełkowego.
+W~eksperymentach przyjęto domyślnie $\Delta=1{,}0$~min.
+Uzasadnienie wynika z~właściwości użytych grafów pieszych, a~nie z~chęci
+wymuszenia $\Delta\le w_{\min}$ i~trybu \emph{label-setting}.
+
+Empirycznie, na grafach pieszych Gdańska, Gdańska Południe i~Londynu
+zachodzą następujące zależności:
+\begin{itemize}
+  \item mediana wagi krawędzi pieszej wynosi ok.\ $0{,}7$~min,
+        co~odpowiada odcinkowi długości ok.\ $58$~m przy prędkości
+        $5$~km/h (podrozdz.~\ref{sec:dane:wagi}),
+  \item minimalna dodatnia waga krawędzi wynosi ok.\ $7\cdot 10^{-4}$~min;
+        wartość ta jest zdominowana przez krótkie segmenty powstałe
+        w~procedurze wstawiania usług do grafu (rozdz.~\ref{sec:dane:wstawianie}),
+        gdy wstawiany wierzchołek usługi pada blisko końca krawędzi.
+\end{itemize}
+
+Wybór $\Delta=w_{\min}$ formalnie zapewniłby tryb \emph{label-setting}, jednak
+przy progu $t=15$~min skutkowałby liczbą kubełków
+$\lceil t/w_{\min}\rceil\approx 21\,500$. W~każdym z~nich znajdowałaby się
+średnio mniej niż jedna para $(d,v)$, a~koszt operacji \emph{extract-min} byłby
+zdominowany przez liniowy skan tablicy pustych kubełków. Asymptotyczna
+przewaga $O(1)$ na operację (właściwa dla wariantu kubełkowego) traciłaby
+wówczas znaczenie praktyczne, a~mierzony czas wykonania okazałby się
+gorszy niż dla wariantu z~kopcem binarnym.
+
+\clearpage
+
+Wybór $\Delta=1{,}0$ daje natomiast:
+\begin{itemize}
+  \item liczbę kubełków $\lceil t/\Delta\rceil=15$, czyli stałą znacznie
+        mniejszą niż liczba wierzchołków w~izochronie,
+  \item gęste obsadzenie pojedynczego kubełka: przy $|V'|\gg\lceil t/\Delta\rceil=15$
+        (tab.~\ref{tab:wyniki:pokrycie}) na jeden kubełek przypada
+        od kilkuset do dziesiątek tysięcy par $(d,v)$, więc koszt skanu
+        przy \emph{extract-min} dotyczy krótkiej, stale zajętej tablicy,
+        a~nie długiej sekwencji pustych kubełków,
+  \item dopuszczalność trybu \emph{label-correcting}; ze~względu na wąski rozkład
+        wag krawędzi liczba powtórnych ekstrakcji pojedynczego wierzchołka
+        pozostaje w~praktyce niewielka, a~jej koszt jest amortyzowany przez
+        bardzo niski koszt operacji na kolejce.
+\end{itemize}
+
+W~niniejszej pracy nie zbadano, czy przyjęta wartość $\Delta=1{,}0$~min
+jest optymalnym wyborem tego parametru.
+
+\subsection{Złożoność}
+\label{subsec:warianty:bucket:zlozonosc}
+
+W~trybie \emph{label-setting} ($\Delta\le w_{\min}$) wariant kubełkowy daje
+amortyzowany koszt $O(1)$ na operację \emph{insert} oraz \emph{extract-min},
+plus jednorazowy skan tablicy o~koszcie $O(\lceil t/\Delta\rceil)$.
+Łączna złożoność wynosi wówczas
+\[
+T_{\mathrm{bucket}}=\mathcal{O}\!\bigl(|V'|+|E'|+\lceil t/\Delta\rceil\bigr),
+\]
+gdzie, jak poprzednio, $V'$ i~$E'$ oznaczają część grafu faktycznie odwiedzoną
+przy ograniczeniu progiem~$t$. W~porównaniu z~kopcem binarnym
+($\mathcal{O}((|V'|+|E'|)\log|V'|)$) usunięty zostaje czynnik logarytmiczny.
+
+W~trybie \emph{label-correcting} ($\Delta>w_{\min}$) pojedynczy wierzchołek
+bywa wyciągany z~kolejki więcej niż raz; w~praktyce, przy wąskim rozkładzie
+wag na sieci pieszej, liczba takich powtórzeń i~tak pozostaje mała.
+Asymptotyczny rząd kosztu nie zmienia się względem \emph{label-setting},
+rosną jedynie stałe ukryte w~notacji $\mathcal{O}(\cdot)$.
+
+\clearpage
+
+\section{Podsumowanie i porównanie wariantów}
+\label{sec:warianty:podsumowanie}
+
+Tabela~\ref{tab:warianty_porownanie} zbiera w~skrócie trzy warianty: rodzaj
+kolejki, stosowanie progu~$t$ oraz porządek złożoności czasowej w~ujęciu
+istotnym dla zadania miasta 15-minutowego.
+
+\begin{table}[ht]
+\centering
+\caption{Porównanie trzech rozważanych wariantów algorytmu Dijkstry.
+$V'$ i~$E'$ oznaczają część grafu faktycznie odwiedzaną przy ograniczeniu
+progiem~$t$.}
+\label{tab:warianty_porownanie}
+\begin{tabular}{l l l l}
+\hline
+\textbf{Wariant} & \textbf{Rodzaj kolejki} & \textbf{Ograniczenie $t$} & \textbf{Złożoność czasowa} \\
+\hline
+bazowy           & kopiec binarny    & Nie & $\mathcal{O}((|V|+|E|)\log|V|)$            \\
+ograniczony~$t$  & kopiec binarny    & Tak          & $\mathcal{O}((|V'|+|E'|)\log|V'|)$         \\
+kubełkowy        & tablica kubełków FIFO    & Tak          & $\mathcal{O}(|V'|+|E'|+\lceil t/\Delta\rceil)$ \\
+\hline
+\end{tabular}
+\end{table}
+
+Trzy warianty stanowią naturalną sekwencję rozszerzeń: wariant bazowy nie
+wykorzystuje ani ograniczonego zasięgu izochrony, ani struktury rozkładu
+wag krawędzi; wariant ograniczony progiem~$t$ uwzględnia tę pierwszą cechę,
+nie zmieniając kolejki priorytetowej; wariant kubełkowy łączy obie obserwacje
+i~dodatkowo redukuje koszt operacji na kolejce.
+
+W~rozdziale~\ref{chap:wyniki} zestawimy te szacunki z~pomiarami czasu na
+grafach pieszych Gdańska, Gdańska Południe i~Londynu. Wcześniej,
+w~rozdziale~\ref{chap:implementacja}, opisany jest wspólny kod trzech wariantów
+oraz tryb wieloprocesowy z~równoległym liczeniem kategorii usług na osobnych
+wątkach.

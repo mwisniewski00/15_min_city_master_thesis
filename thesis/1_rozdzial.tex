@@ -6,72 +6,80 @@
 
 Zarówno sieć transportowa, jak i lokalizacje usług (punkty zainteresowania, ang.\ \emph{Points of Interest}, PoI)
 wykorzystywane w~niniejszej pracy pochodzą z~projektu OpenStreetMap (OSM) \cite{openstreetmap}.
-OSM jest otwartą, ogólnoświatową bazą danych geoprzestrzennych, tworzoną i utrzymywaną przez społeczność wolontariuszy.
-Wybór tego źródła podyktowany jest trzema czynnikami:
+OSM jest otwartą, ogólnoświatową bazą danych geoprzestrzennych, tworzoną i~utrzymywaną przez społeczność wolontariuszy.
+Wybór tego źródła wynika z~trzech czynników:
 \begin{itemize}
-  \item \textbf{Otwartość danych} --- dane OSM są dostępne na licencji ODbL,
-        co umożliwia ich swobodne wykorzystanie w~badaniach naukowych bez ograniczeń licencyjnych.
-  \item \textbf{Globalna replikowalność} --- jednolity format danych i schemat tagów pozwalają
-        na stosowanie tych samych narzędzi i metod niezależnie od analizowanego miasta,
-        co jest istotne z~perspektywy powtarzalności eksperymentów.
-  \item \textbf{Jednolity schemat tagów} --- OSM definiuje ustandaryzowany system tagów (par klucz--wartość),
-        który umożliwia systematyczne mapowanie kategorii usług na odpowiednie obiekty w~bazie danych.
+  \item \textbf{otwartość danych}: dane OSM są dostępne na licencji ODbL,
+        co umożliwia ich swobodne wykorzystanie w~badaniach naukowych bez ograniczeń licencyjnych,
+  \item \textbf{globalna replikowalność}: jednolity format danych i~schemat tagów pozwalają
+        stosować te same narzędzia i~metody niezależnie od analizowanego miasta,
+        co jest istotne dla powtarzalności eksperymentów,
+  \item \textbf{jednolity schemat tagów}: OSM korzysta z~ustandaryzowanego systemu tagów
+        (par klucz--wartość), który umożliwia systematyczne mapowanie kategorii usług
+        na odpowiednie obiekty w~bazie danych.
 \end{itemize}
-Uzasadnienie to jest spójne z~podejściem przyjętym m.in.\ w~pracy Olivariego i~in.\ \cite{olivari2023presenting}
+Podobne uzasadnienie przyjęto m.in.\ w~pracy Olivariego i~in.\ \cite{olivari2023presenting}
 (indeks NEXI) oraz w~pracy Lama \cite{Lam2024}, w~których OSM stanowił jedyne źródło danych wejściowych.
 
 Dostęp do danych OSM realizowany jest za pośrednictwem biblioteki OSMnx \cite{boeing2017osmnx},
-która udostępnia interfejs programistyczny w~języku Python do usługi Overpass API.
+udostępniającej interfejs programistyczny w~języku Python do usługi Overpass API.
 OSMnx automatyzuje pobieranie, filtrowanie i~konstrukcję grafów transportowych w~postaci obiektów
-biblioteki NetworkX, co pozwala na bezpośrednie wykorzystanie standardowych algorytmów grafowych.
+biblioteki NetworkX, dzięki czemu można bezpośrednio wykorzystać standardowe algorytmy grafowe.
+
+\clearpage
 
 \section{Konstrukcja grafu pieszego}
 \label{sec:dane:graf}
 
 Na podstawie danych OSM budowany jest graf ważony $G=(V,E)$ reprezentujący sieć pieszą badanego obszaru.
-Proces konstrukcji obejmuje cztery kroki, podsumowane poniżej.
+Proces konstrukcji obejmuje pięć kroków, podsumowanych poniżej.
 
 \subsection{Pobranie danych}
 
-Dane sieci pieszej pobierane są za pomocą funkcji \texttt{osmnx.graph\_from\_polygon}
-(dla obszarów definiowanych wielokątem, np.\ Gdańsk Południe)
-lub \texttt{osmnx.graph\_from\_place} (dla obszarów identyfikowanych przez nazwę, np.\ Gdańsk, Londyn).
-W~obu przypadkach stosowany jest parametr \texttt{network\_type="walk"},
-który ogranicza wynik do ulic i ciągów dozwolonych dla ruchu pieszego.
+Dane sieci pieszej pobierane są za pomocą jednej z~dwóch funkcji biblioteki OSMnx,
+zależnie od sposobu zdefiniowania obszaru.
+Dla obszarów identyfikowanych przez nazwę administracyjną (np.\ Gdańsk, Londyn)
+wykorzystywana jest funkcja \texttt{graph\_\allowbreak from\_\allowbreak place},
+która sama pobiera granice z~OSM i~konstruuje graf w~ich obrębie.
+Dla obszarów złożonych z~kilku jednostek pomocniczych (np.\ Gdańsk Południe)
+stosowana jest funkcja \texttt{graph\_\allowbreak from\_\allowbreak polygon},
+której przekazywany jest wcześniej przygotowany wielokąt obszaru.
+Wielokąt ten jest tworzony przez pobranie granic poszczególnych jednostek z~OSM
+(funkcja \texttt{geocode\_\allowbreak to\_\allowbreak gdf})
+i~połączenie ich operacją \texttt{unary\_\allowbreak union} z~biblioteki Shapely.
+W~obu przypadkach stosowany jest parametr \texttt{network\_\allowbreak type="walk"},
+który ogranicza wynik do ulic i~ciągów dozwolonych dla ruchu pieszego.
 
 \subsection{Odwzorowanie kartograficzne}
 
-Pobrany graf jest rzutowany do układu współrzędnych EPSG:3035
---- metrycznego odwzorowania równopolowego obejmującego Europę ---
-za pomocą funkcji \texttt{osmnx.projection.project\_graph}.
-Dzięki temu wszystkie odległości i~długości krawędzi są wyrażone w~metrach,
-co jest konieczne do poprawnego wyznaczania wag czasowych.
+Pobrany graf jest rzutowany do układu współrzędnych EPSG:3035 (metrycznego
+odwzorowania równopolowego obejmującego Europę) za pomocą funkcji
+\texttt{osmnx.\allowbreak projection.\allowbreak project\_\allowbreak graph}. Dzięki temu wszystkie odległości i~długości
+krawędzi są wyrażone w~metrach, co jest konieczne do poprawnego wyznaczania wag czasowych.
 
 \subsection{Konsolidacja skrzyżowań}
 
-Surowe dane OSM często zawierają nadmiarowe węzły w~obrębie skrzyżowań
-(np.\ osobne węzły dla każdego pasa ruchu lub przejścia).
-Konsolidacja skrzyżowań, realizowana funkcją \texttt{osmnx.consolidate\_intersections}
-z~parametrem \texttt{tolerance=10\,m}, łączy węzły leżące bliżej siebie niż zadana tolerancja
-w~pojedyncze wierzchołki.
-Przyjęta wartość tolerancji $10\,\text{m}$ stanowi kompromis między redukcją nadmiarowych węzłów
-a~zachowaniem szczegółów topologicznych sieci.
+Surowe dane OSM często zawierają nadmiarowe węzły w~obrębie skrzyżowań,
+np.\ osobne węzły dla każdego pasa ruchu lub przejścia.
+Konsolidacja skrzyżowań, realizowana funkcją \texttt{osmnx.\allowbreak consolidate\_\allowbreak intersections}
+z~parametrem \texttt{tolerance=10\,m}, łączy w~pojedyncze wierzchołki te węzły, które
+leżą bliżej siebie niż zadana tolerancja. Przyjęta wartość $10\,\text{m}$ stanowi kompromis
+między redukcją nadmiarowych węzłów a~zachowaniem szczegółów topologicznych sieci.
 
 \subsection{Konwersja do grafu nieskierowanego}
 
-Sieć piesza jest symetryczna --- piesi mogą poruszać się w~obu kierunkach każdym odcinkiem ---
-dlatego wynikowy graf jest konwertowany do postaci nieskierowanej
-za pomocą funkcji \texttt{osmnx.convert.to\_undirected}.
+Sieć piesza jest symetryczna (piesi mogą poruszać się w~obu kierunkach każdym odcinkiem),
+dlatego wynikowy graf konwertowany jest do postaci nieskierowanej za pomocą funkcji
+\texttt{osmnx.convert.to\_undirected}.
 
 \subsection{Geometria krawędzi}
 
-Krawędzie grafu mogą posiadać atrybut \texttt{geometry} przechowujący obiekt \texttt{LineString}
---- łamaną złożoną z~wielu punktów pośrednich, odwzorowującą rzeczywisty przebieg odcinka ulicy.
+Krawędzie grafu mogą posiadać atrybut \texttt{geometry} przechowujący obiekt \texttt{LineString},
+tj.\ łamaną złożoną z~wielu punktów pośrednich, odwzorowującą rzeczywisty przebieg odcinka ulicy.
 Długość takiej krawędzi jest sumą odległości między kolejnymi punktami łamanej.
-Krawędzie bez tego atrybutu są traktowane jako odcinki prostoliniowe łączące współrzędne wierzchołków końcowych,
-a~ich długość jest równa odległości euklidesowej między tymi wierzchołkami.
-
-\clearpage
+Krawędzie pozbawione tego atrybutu traktowane są jako odcinki prostoliniowe łączące współrzędne
+wierzchołków końcowych, a~ich długość przyjmuje się równą odległości euklidesowej między
+tymi wierzchołkami.
 
 \section{Kategorie usług i mapowanie tagów OSM}
 \label{sec:dane:uslugi}
@@ -104,27 +112,23 @@ shops          & \texttt{shop}     & clothes, electronics, furniture, hairdresse
 
 Przy mapowaniu tagów istotne są trzy decyzje projektowe:
 \begin{itemize}
-  \item \textbf{Kategorie \emph{grocery} i \emph{shops}} --- obie wykorzystują klucz \texttt{shop}.
-        Kategoria \emph{grocery} obejmuje sklepy spożywcze i napojowe
-        (np.\ bakery, supermarket, convenience),
-        natomiast \emph{shops} obejmuje handel nieżywnościowy
-        (np.\ clothes, electronics, furniture).
+  \item \textbf{kategorie \emph{grocery} i~\emph{shops}}: obie wykorzystują klucz \texttt{shop}.
+        Kategoria \emph{grocery} obejmuje sklepy spożywcze i~napojowe
+        (np.\ bakery, supermarket, convenience), natomiast \emph{shops} obejmuje handel
+        nieżywnościowy (np.\ clothes, electronics, furniture).
         Cztery wartości ogólnohandlowe (\texttt{department\_store}, \texttt{general},
-        \texttt{kiosk}, \texttt{mall}) występują w~obu listach zgodnie z~oryginałem~\cite{olivari2023presenting}.
+        \texttt{kiosk}, \texttt{mall}) występują w~obu listach zgodnie z~oryginałem~\cite{olivari2023presenting},
 
-  \item \textbf{Kategoria \emph{parks}} --- w~tabeli NEXI kategoria ta jest konceptualnie grupowana
-        pod kluczem \texttt{amenity}, jednak w~schemacie tagów OSM wartości \texttt{park} i~\texttt{dog\_park}
-        należą do klucza \texttt{leisure}.
-        Zapytanie \texttt{amenity=park} zwraca w~OSM niemal puste wyniki;
-        poprawnym zapytaniem jest \texttt{leisure=park}.
+  \item \textbf{kategoria \emph{parks}}: w~tabeli NEXI jest ona konceptualnie grupowana
+        pod kluczem \texttt{amenity}, jednak w~schemacie tagów OSM wartości \texttt{park}
+        i~\texttt{dog\_park} należą do klucza \texttt{leisure}. Zapytanie \texttt{amenity=park}
+        zwraca w~OSM niemal puste wyniki; poprawne jest \texttt{leisure=park},
 
-  \item \textbf{Normalizacja geometrii} --- obiekty pobrane z~OSM mogą mieć zróżnicowaną geometrię:
-        punkty, linie lub wielokąty (np.\ obrys budynku szpitala).
-        Wszystkie geometrie są sprowadzane do centroidów obliczanych w~układzie EPSG:3035,
-        co zapewnia jednolity format punktowy wymagany przez procedurę wstawiania usług do grafu.
+  \item \textbf{normalizacja geometrii}: obiekty pobrane z~OSM mogą mieć zróżnicowaną geometrię,
+        np.\ punkty, linie lub wielokąty (obrys budynku szpitala).
+        Wszystkie geometrie sprowadzane są do centroidów obliczanych w~układzie EPSG:3035,
+        co daje jednolity format punktowy wymagany przez procedurę wstawiania usług do grafu.
 \end{itemize}
-
-\clearpage
 
 \section{Wstawianie lokalizacji usług do grafu}
 \label{sec:dane:wstawianie}
@@ -134,27 +138,41 @@ a~lokalizacjami usług, punkty usług muszą zostać wstawione do grafu jako dod
 Procedura wstawiania składa się z~następujących kroków, wykonywanych dla każdego punktu usługi:
 
 \begin{enumerate}
-  \item \textbf{Znalezienie najbliższej krawędzi} ---
-        dla punktu usługi o~współrzędnych $(x_s, y_s)$ wyznaczana jest najbliższa krawędź $(u,v)$ grafu
-        za pomocą funkcji \texttt{osmnx.nearest\_edges}.
+  \item \textbf{znalezienie najbliższej krawędzi}: dla punktu usługi o~współrzędnych
+        $(x_s, y_s)$ wyznaczana jest najbliższa krawędź $(u,v)$ grafu za pomocą funkcji
+        \texttt{osmnx.\allowbreak distance.\allowbreak nearest\_\allowbreak edges},
 
-  \item \textbf{Punkt najbliższy na krawędzi} ---
-        za pomocą funkcji \texttt{shapely.nearest\_points}
-        wyznaczany jest punkt $p$ na geometrii krawędzi najbliższy do $(x_s, y_s)$.
+  \item \textbf{najbliższy punkt na krawędzi}: współrzędne punktu rzutu $(x_s, y_s)$
+        na geometrię krawędzi wyznacza się dwoma kolejnymi wywołaniami Shapely dla tej samej
+        łamanej: \texttt{LineString.project} oraz \texttt{LineString.interpolate}.
+        Metoda \texttt{project} zwraca liczbę $d$ równą długości fragmentu łamanej
+        od jej początku do punktu na niej leżącego najbliżej $(x_s, y_s)$.
+        Metoda \texttt{interpolate($d$)} odwzorowuje taką odległość na punkt $p$ leżący
+        na łamanej, którego współrzędne są używane dalej w~procedurze.
 
-  \item \textbf{Podział krawędzi} ---
-        krawędź $(u,v)$ jest dzielona w~punkcie $p$ na dwie nowe krawędzie: $(u, p)$ i~$(p, v)$.
-        Geometrie nowych krawędzi są wyznaczane przez podział ciągu współrzędnych
-        oryginalnej krawędzi w~miejscu rzutu.
+  \item \textbf{podział krawędzi}: oryginalna krawędź $(u,v)$ jest usuwana,
+        a~w~jej miejsce wstawiana jest sekwencja nowych krawędzi przechodzących przez
+        punkty rzutów. Jeśli na tę samą krawędź rzutuje $k$ punktów usług,
+        zostaje ona dzielona za jednym razem na $k{+}1$ segmentów (w~przypadku jednej
+        usługi otrzymujemy dwie krawędzie: $(u, p)$ i~$(p, v)$). Geometrie nowych krawędzi
+        wyznacza funkcja \texttt{shapely.ops.substring}, zwracająca podciąg łamanej
+        między zadanymi odległościami,
 
-  \item \textbf{Utworzenie wierzchołka usługi} ---
-        w~punkcie $p$ tworzony jest nowy wierzchołek grafu,
-        oznaczony kategorią usługi (np.\ \emph{grocery}, \emph{health}).
+  \item \textbf{utworzenie wierzchołka usługi}: w~każdym punkcie rzutu tworzony jest
+        nowy wierzchołek grafu, oznaczony kategorią usługi (np.\ \emph{grocery}, \emph{health}),
 
-  \item \textbf{Wyznaczenie wag} ---
-        nowym krawędziom przypisywane są wagi czasowe zgodnie z~modelem
-        opisanym w~podrozdziale~\ref{sec:dane:wagi}.
+  \item \textbf{wyznaczenie wag}: krawędziom grafu przypisywane są wagi czasowe zgodnie
+        z~modelem opisanym w~podrozdziale~\ref{sec:dane:wagi}. W~implementacji wagi
+        przeliczane są dla wszystkich krawędzi grafu, zarówno nowo powstałych,
+        jak i~niezmienionych przez procedurę wstawiania, co zapewnia jednolitość modelu
+        czasowego.
 \end{enumerate}
+
+W~celu poprawy wydajności najbliższe krawędzie dla wszystkich punktów usług
+wyznaczane są jednym wywołaniem funkcji \texttt{osmnx.\allowbreak distance.\allowbreak nearest\_\allowbreak edges},
+zamiast wielokrotnego wywoływania jej w~pętli, raz na każdy punkt.
+Następnie punkty grupowane są według wspólnej krawędzi tak, aby każda krawędź była dzielona
+tylko raz, niezależnie od liczby rzutowanych na nią punktów.
 
 Podejście to jest analogiczne do metody zastosowanej przez Lama
 (Figure~6.2 w~\cite{Lam2024}).
@@ -162,16 +180,23 @@ Podejście to jest analogiczne do metody zastosowanej przez Lama
 \section{Model wag czasowych}
 \label{sec:dane:wagi}
 
-Waga krawędzi $e \in E$ jest interpretowana jako czas przejścia pieszo i~wyznaczana według wzoru
+Waga krawędzi $e \in E$ jest interpretowana jako czas przejścia pieszo
+i~wyznaczana według wzoru
 \[
 w(e) = \frac{\ell(e)}{v},
+\qquad
+v = 5\,\text{km/h}
+\approx 83{,}33\,\text{m/min}
 \]
-gdzie $\ell(e)$ jest długością geometrii krawędzi $e$ w~metrach,
-a~$v = 5\,\text{km/h}$ jest przyjętą prędkością marszu.
-Wartość prędkości jest zgodna z~założeniem przyjętym
+gdzie $\ell(e)$ oznacza długość geometrii krawędzi $e$ w~metrach,
+a~$v$ przyjętą prędkość marszu wyrażoną w~metrach na minutę.
+Tak zdefiniowana waga ma jednostkę \emph{minut}, co jest spójne
+z~kontekstem miasta 15-minutowego, gdzie analizowany próg dostępności
+($15\,$min) wyrażony jest w~tych samych jednostkach.
+Wartość prędkości $5\,\text{km/h}$ jest zgodna z~założeniem przyjętym
 w~pracy definiującej indeks NEXI \cite{olivari2023presenting}.
 
-Model wag jest celowo prosty --- nie uwzględnia dodatkowych składników opóźnień
+Model wag jest świadomie uproszczony: nie uwzględnia dodatkowych składników opóźnień
 (np.\ na skrzyżowaniach czy przejściach dla pieszych) ani zróżnicowania prędkości
 ze względu na typ nawierzchni lub nachylenie terenu.
 
@@ -179,8 +204,8 @@ ze względu na typ nawierzchni lub nachylenie terenu.
 \label{sec:dane:obszary}
 
 Eksperymenty prowadzone są na trzech obszarach o~zróżnicowanej skali,
-co pozwala ocenić zachowanie badanych algorytmów w~warunkach
-od analizy lokalnej do testu na wielkiej skali.
+co pozwala ocenić zachowanie badanych algorytmów w~warunkach obejmujących
+zarówno analizę lokalną, jak i~test na wielkiej skali.
 
 \subsection{Gdańsk Południe}
 
@@ -205,7 +230,7 @@ Granica jest pozyskiwana z~OSM analogicznie jak w~przypadku Gdańska.
 Rysunki~\ref{fig:graf_gdansk_poludnie}--\ref{fig:graf_london} przedstawiają grafy piesze
 trzech badanych obszarów po wstawieniu lokalizacji usług.
 Szare punkty odpowiadają wierzchołkom sieci pieszej (skrzyżowaniom),
-a~czerwone --- wstawionym lokalizacjom usług.
+natomiast czerwone oznaczają wstawione lokalizacje usług.
 
 \begin{figure}[ht]
 \centering

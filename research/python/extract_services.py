@@ -95,14 +95,6 @@ NEXI_TAGS = {
 
 
 def _features_shop_tags_chunked(polygon, shop_values, *, chunk_size=10):
-    """
-    Query ``shop=*`` POIs in several Overpass requests.
-
-    OSMnx builds one ``(poly:…)`` clause per tag value × {node, way, relation},
-    so e.g. 27 grocery shop types embed the boundary 81 times in a single
-    query — exceeding Overpass’s ~16 MB input limit for large polygons.
-    Small chunks keep each request small; results are merged and de-duplicated.
-    """
     parts = []
     shop_list = list(shop_values)
     for start in range(0, len(shop_list), chunk_size):
@@ -119,17 +111,6 @@ def _features_shop_tags_chunked(polygon, shop_values, *, chunk_size=10):
 
 
 def fetch_services_for_polygon(polygon, output_path, *, overpass_mitigations=False):
-    """
-    Fetch all NEXI service categories from OSM and save as GeoPackage layers.
-
-    Parameters
-    ----------
-    overpass_mitigations
-        If True (e.g. Greater London), split ``shop`` tag queries for
-        ``grocery`` / ``shops`` into several Overpass requests so the query
-        body stays under server limits — **the polygon is not simplified**.
-        If False (default), one ``features_from_polygon`` call per category.
-    """
     for category, tags in NEXI_TAGS.items():
         try:
             if overpass_mitigations and category in ("shops", "grocery"):
@@ -151,7 +132,6 @@ def fetch_services_for_polygon(polygon, output_path, *, overpass_mitigations=Fal
 
 
 def fetch_services_for_place(place_query, output_path, *, overpass_mitigations=False):
-    """Fetch all NEXI service categories for a named place and save as GeoPackage layers."""
     gdf_boundary = osmnx.geocoder.geocode_to_gdf(place_query)
     polygon = gdf_boundary.geometry.iloc[0]
     print(f"Fetching services for '{place_query}' → {output_path}")
@@ -174,7 +154,7 @@ def fetch_services_for_place(place_query, output_path, *, overpass_mitigations=F
 # fetch_services_for_polygon(polygon_poludnie, "services_gdansk_poludnie.gpkg")
 #######################################
 
-# Gdańsk (whole city)
+# Gdańsk
 #######################################
 # fetch_services_for_place("Gdańsk, Poland", "services_gdansk.gpkg")
 #######################################

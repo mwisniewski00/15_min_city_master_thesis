@@ -13,6 +13,9 @@ GDANSK_POLUDNIE_SUB_DISTRICTS = [
 PLACE_GDANSK = "Gdańsk, Poland"
 PLACE_LONDON = "Greater London, United Kingdom"
 
+WALKING_SPEED_KMH = 5.0
+WALKING_SPEED_IN_METERS_PER_MINUTE = WALKING_SPEED_KMH * 1000.0 / 60.0
+
 
 def process_graph(graph):
     # 3035 is the CRS for Europe
@@ -30,7 +33,6 @@ def process_graph(graph):
 
 
 def build_gdansk_poludnie_graph():
-    """Build and return the projected walk graph for Gdańsk Południe."""
     gdfs = [osmnx.geocoder.geocode_to_gdf(q) for q in GDANSK_POLUDNIE_SUB_DISTRICTS]
     polygon = unary_union([gdf.geometry.iloc[0] for gdf in gdfs])
     graph = osmnx.graph.graph_from_polygon(polygon, network_type="walk")
@@ -38,13 +40,11 @@ def build_gdansk_poludnie_graph():
 
 
 def build_gdansk_graph():
-    """Build and return the projected walk graph for Gdańsk (municipal boundary)."""
     graph = osmnx.graph.graph_from_place(PLACE_GDANSK, network_type="walk")
     return process_graph(graph)
 
 
 def build_london_graph():
-    """Build and return the projected walk graph for Greater London."""
     graph = osmnx.graph.graph_from_place(PLACE_LONDON, network_type="walk")
     return process_graph(graph)
 
@@ -66,7 +66,7 @@ def build_london_graph():
 # Nodes: 5159
 # Edges: 11745
 
-# Gdańsk (whole city — single place query; OSM has municipal boundary polygon)
+# Gdańsk
 #######################################
 # graph = build_gdansk_graph()
 #
@@ -85,7 +85,7 @@ def build_london_graph():
 # Nodes: 24610
 # Edges: 53584
 
-# Greater London (administrative area — typical “whole London” for OSM / stress tests)
+# Greater London
 #######################################
 # graph = build_london_graph()
 

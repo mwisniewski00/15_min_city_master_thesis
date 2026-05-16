@@ -24,12 +24,6 @@ _SERVICE_NODE_COLOR = "#d62728"
 
 
 def _coords_to_linestring(coords):
-    """
-    Build a Shapely LineString from coordinate tuples.
-
-    GEOS rejects a single-point line; duplicate the point for a valid
-    zero-length segment (projection exactly on an existing vertex).
-    """
     seq = list(coords)
     if not seq:
         raise ValueError("LineString requires at least one coordinate")
@@ -39,7 +33,6 @@ def _coords_to_linestring(coords):
 
 
 def _edge_geometry(graph, u, v, edge_data):
-    """Return the LineString geometry for an edge, synthesising one if absent."""
     if 'geometry' in edge_data:
         return edge_data['geometry']
     return LineString([
@@ -49,10 +42,6 @@ def _edge_geometry(graph, u, v, edge_data):
 
 
 def _safe_substring(edge_geom, start_dist, end_dist, fallback_xy):
-    """
-    Extract a sub-linestring, returning a valid zero-length segment when
-    the result would be empty or degenerate (e.g. start_dist == end_dist).
-    """
     if abs(end_dist - start_dist) < 1e-12:
         return _coords_to_linestring([fallback_xy])
     seg = substring(edge_geom, start_dist, end_dist)
@@ -62,19 +51,6 @@ def _safe_substring(edge_geom, start_dist, end_dist, fallback_xy):
 
 
 def insert_services_from_gpkg(graph, gpkg_path):
-    """
-    Insert every service point from *gpkg_path* into *graph* by splitting
-    the nearest edge for each point.
-
-    Uses a single vectorised nearest-edge lookup (one R-tree build) and
-    groups points per edge so each original edge is split only once, even
-    when multiple services project onto it.
-
-    Returns
-    -------
-    graph : the modified graph (also mutated in-place)
-    inserted : dict mapping category name → list of new node IDs
-    """
     layers = [row[0] for row in pyogrio.list_layers(gpkg_path)]
 
     all_services = []
@@ -149,6 +125,11 @@ def insert_services_from_gpkg(graph, gpkg_path):
             weight=seg_len / WALKING_SPEED_IN_METERS_PER_MINUTE,
         )
 
+    for u, v, k, edge_data in graph.edges(keys=True, data=True):
+        edge_data['weight'] = (
+            float(edge_data['length']) / WALKING_SPEED_IN_METERS_PER_MINUTE
+        )
+
     result = {}
     for category in layers:
         ids = inserted.get(category, [])
@@ -159,12 +140,6 @@ def insert_services_from_gpkg(graph, gpkg_path):
 
 
 def save_routed_graph(graph, graphml_path):
-    """
-    Persist *graph* for later OSMnx / NetworkX analysis (e.g. 15-minute city).
-
-    Reload with ``osmnx.load_graphml(path)``; edge ``geometry`` is restored
-    from WKT automatically.
-    """
     path = Path(graphml_path)
     path.parent.mkdir(parents=True, exist_ok=True)
     osmnx.io.save_graphml(graph, path)
@@ -183,11 +158,6 @@ def plot_street_vs_service_nodes(
     node_size_street=8,
     node_size_service=28,
 ):
-    """
-    Save a map figure: street nodes vs inserted service nodes (by
-    ``service_category``) use different colours and sizes.
-    """
-    # Same node order as osmnx.plot.plot_graph → graph_to_gdfs(nodes only)
     gdf_nodes = osmnx.convert.graph_to_gdfs(
         graph, edges=False, node_geometry=False
     )
@@ -228,13 +198,6 @@ def _build_insert_save(
     *,
     graphs_dir=_DEFAULT_GRAPHS_DIR,
 ):
-    """
-    Build walk graph, insert services from GeoPackage, save GraphML + PNG.
-
-    Returns
-    -------
-    graph, inserted
-    """
     gpkg_path = Path(gpkg_path)
     graphs_dir = Path(graphs_dir)
     if not gpkg_path.is_file():
@@ -273,7 +236,6 @@ def build_insert_save_gdansk_poludnie(
     graphs_dir=_DEFAULT_GRAPHS_DIR,
     gpkg_path=_SCRIPT_DIR / "services_gdansk_poludnie.gpkg",
 ):
-    """Gdańsk Południe: services GeoPackage → GraphML + PNG under *graphs_dir*."""
     return _build_insert_save(
         "Gdańsk Południe",
         build_gdansk_poludnie_graph,
@@ -289,7 +251,6 @@ def build_insert_save_gdansk(
     graphs_dir=_DEFAULT_GRAPHS_DIR,
     gpkg_path=_SCRIPT_DIR / "services_gdansk.gpkg",
 ):
-    """Whole Gdańsk: services GeoPackage → GraphML + PNG under *graphs_dir*."""
     return _build_insert_save(
         "Gdańsk",
         build_gdansk_graph,
@@ -305,7 +266,6 @@ def build_insert_save_london(
     graphs_dir=_DEFAULT_GRAPHS_DIR,
     gpkg_path=_SCRIPT_DIR / "services_london.gpkg",
 ):
-    """Greater London: services GeoPackage → GraphML + PNG under *graphs_dir*."""
     return _build_insert_save(
         "London",
         build_london_graph,
